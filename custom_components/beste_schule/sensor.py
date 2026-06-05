@@ -18,8 +18,12 @@ TIMETABLE_KEYS = (
     "time_tables",
     "time_tables_current",
     "time_tables_show_current",
+    "time_tables_show_current_kebab",
     "time_table_times",
     "time_table_time_lessons",
+    "journal_days",
+    "journal_weeks",
+    "journal_lessons",
 )
 
 

@@ -51,6 +51,14 @@ WEEKDAY_KEYS = (
     "day",
     "weekday_id",
 )
+DATE_KEYS = (
+    "date",
+    "day_date",
+    "lesson_date",
+    "starts_on",
+    "start_date",
+    "given_at",
+)
 START_KEYS = (
     "start",
     "starts_at",
@@ -84,6 +92,17 @@ TITLE_KEYS = (
 )
 ROOM_KEYS = ("room", "rooms", "roomName", "room_name")
 TEACHER_KEYS = ("teacher", "teachers", "teacherName", "teacher_name")
+TIMETABLE_SOURCE_KEYS = (
+    "time_tables",
+    "time_tables_current",
+    "time_tables_show_current",
+    "time_tables_show_current_kebab",
+    "time_table_times",
+    "time_table_time_lessons",
+    "journal_days",
+    "journal_weeks",
+    "journal_lessons",
+)
 
 
 async def async_setup_entry(
@@ -96,15 +115,28 @@ async def async_setup_entry(
     async_add_entities([BesteSchuleCalendar(entry, coordinator)])
 
 
-def _iter_values(value: Any) -> Iterable[Any]:
-    """Yield all nested dicts/lists from a response."""
+def _iter_values(value: Any) -> Iterable[dict[str, Any]]:
+    """Yield all nested dicts/lists from a response with inherited date context."""
+    yield from _iter_values_with_context(value, {})
+
+
+def _iter_values_with_context(
+    value: Any,
+    context: dict[str, Any],
+) -> Iterable[dict[str, Any]]:
+    """Yield nested dicts while carrying useful parent fields."""
     if isinstance(value, dict):
-        yield value
+        item = {**context, **value}
+        yield item
+        next_context = dict(context)
+        for key in DATE_KEYS + WEEKDAY_KEYS:
+            if key in value and key not in next_context:
+                next_context[key] = value[key]
         for nested in value.values():
-            yield from _iter_values(nested)
+            yield from _iter_values_with_context(nested, next_context)
     elif isinstance(value, list):
         for item in value:
-            yield from _iter_values(item)
+            yield from _iter_values_with_context(item, context)
 
 
 def _extract_text(value: Any) -> str | None:
@@ -222,6 +254,19 @@ def _parse_time(value: Any) -> time | None:
     return None
 
 
+def _parse_date(value: Any) -> date | None:
+    """Parse a date value from common API formats."""
+    if isinstance(value, str):
+        match = re.search(r"(\d{4})-(\d{2})-(\d{2})", value)
+        if match:
+            return date(
+                year=int(match.group(1)),
+                month=int(match.group(2)),
+                day=int(match.group(3)),
+            )
+    return None
+
+
 def _date_for_weekday(start_date: date, weekday: int) -> date:
     """Return the first date at or after start_date matching weekday."""
     return start_date + timedelta(days=(weekday - start_date.weekday()) % 7)
@@ -240,15 +285,21 @@ def _lesson_events(
     """Convert timetable-like API data into HA calendar events."""
     events: list[CalendarEvent] = []
     seen: set[str] = set()
+    source_data = {
+        key: value
+        for key, value in data.items()
+        if key in TIMETABLE_SOURCE_KEYS and not (isinstance(value, dict) and "error" in value)
+    }
 
-    for item in _iter_values(data):
+    for item in _iter_values(source_data):
         if not isinstance(item, dict):
             continue
 
+        lesson_date = _parse_date(_find_value(item, DATE_KEYS))
         weekday = _parse_weekday(_find_value(item, WEEKDAY_KEYS))
         start_time = _parse_time(_find_value(item, START_KEYS))
         end_time = _parse_time(_find_value(item, END_KEYS))
-        if weekday is None or start_time is None or end_time is None:
+        if (lesson_date is None and weekday is None) or start_time is None or end_time is None:
             continue
 
         title = _find_nested_text(item, TITLE_KEYS)
@@ -259,8 +310,16 @@ def _lesson_events(
         teacher = _find_nested_text(item, TEACHER_KEYS)
         description = teacher
 
-        current_day = _date_for_weekday(start_date.date(), weekday)
-        while current_day <= end_date.date():
+        if lesson_date:
+            lesson_dates = [lesson_date]
+        else:
+            lesson_dates = []
+            current_day = _date_for_weekday(start_date.date(), weekday)
+            while current_day <= end_date.date():
+                lesson_dates.append(current_day)
+                current_day += timedelta(days=7)
+
+        for current_day in lesson_dates:
             event_start = datetime.combine(current_day, start_time, start_date.tzinfo)
             event_end = datetime.combine(current_day, end_time, start_date.tzinfo)
             if event_end > start_date and event_start < end_date:
@@ -276,7 +335,6 @@ def _lesson_events(
                             description=description,
                         )
                     )
-            current_day += timedelta(days=7)
 
     events.sort(key=lambda event: event.start)
     return events

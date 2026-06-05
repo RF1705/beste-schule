@@ -116,6 +116,7 @@ class BesteSchuleApi:
             ),
             "time_tables_current": ("time-tables/current", None),
             "time_tables_show_current": ("time-tables/showCurrent", None),
+            "time_tables_show_current_kebab": ("time-tables/show-current", None),
             "time_table_times": (
                 "time-table-times",
                 {"include": "lessons,subject,room,teacher,group"},
@@ -123,6 +124,18 @@ class BesteSchuleApi:
             "time_table_time_lessons": (
                 "time-table-time-lessons",
                 {"include": "subject,room,teacher,group,time"},
+            ),
+            "journal_days": (
+                "journal-days",
+                {"include": "lessons,subject,room,teacher,group,time"},
+            ),
+            "journal_weeks": (
+                "journal-weeks",
+                {"include": "days,lessons,subject,room,teacher,group,time"},
+            ),
+            "journal_lessons": (
+                "journal-lessons",
+                {"include": "day,subject,room,teacher,group,time"},
             ),
             "substitution_days": ("substitution-plans/days", None),
             "announcements": ("announcements", None),
