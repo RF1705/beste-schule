@@ -207,6 +207,61 @@ def _find_nested_text(item: dict[str, Any], keys: tuple[str, ...]) -> str | None
     return None
 
 
+def _teacher_text(value: Any) -> str | None:
+    """Return a teacher name with forename when available."""
+    if isinstance(value, list):
+        parts = [_teacher_text(item) for item in value]
+        return ", ".join(part for part in parts if part) or None
+
+    if isinstance(value, dict):
+        forename = _extract_text(value.get("forename"))
+        name = _extract_text(value.get("name"))
+        if forename or name:
+            return " ".join(part for part in (forename, name) if part)
+
+    return _extract_text(value)
+
+
+def _room_text(value: Any) -> str | None:
+    """Return a room label, preferring the school's local room number."""
+    if isinstance(value, list):
+        parts = [_room_text(item) for item in value]
+        return ", ".join(part for part in parts if part) or None
+
+    if isinstance(value, dict):
+        for key in ("local_id", "name", "title", "label"):
+            text = _extract_text(value.get(key))
+            if text:
+                return text
+
+    return _extract_text(value)
+
+
+def _find_nested_relation_text(
+    item: dict[str, Any],
+    keys: tuple[str, ...],
+    formatter: Any,
+) -> str | None:
+    """Find formatted relation text for any key anywhere below the item."""
+    for key in keys:
+        text = formatter(item.get(key))
+        if text:
+            return text
+
+    for value in item.values():
+        if isinstance(value, dict):
+            text = _find_nested_relation_text(value, keys, formatter)
+            if text:
+                return text
+        elif isinstance(value, list):
+            for nested in value:
+                if isinstance(nested, dict):
+                    text = _find_nested_relation_text(nested, keys, formatter)
+                    if text:
+                        return text
+    return None
+
+
 def _find_value(item: dict[str, Any], keys: tuple[str, ...]) -> Any:
     """Find a scalar value for any key anywhere below the item."""
     for key in keys:
@@ -355,8 +410,8 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
             overlay[key] = {
                 "status": "substitution",
                 "title": _find_nested_text(item, TITLE_KEYS),
-                "location": _find_nested_text(item, ROOM_KEYS),
-                "teacher": _find_nested_text(item, TEACHER_KEYS),
+                "location": _find_nested_relation_text(item, ROOM_KEYS, _room_text),
+                "teacher": _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text),
                 "notes": _extract_text(item.get("notes")),
             }
     return overlay
@@ -400,14 +455,14 @@ def _lesson_events(
             continue
 
         number = _find_value(item, LESSON_NR_KEYS)
-        location = _find_nested_text(item, ROOM_KEYS)
-        teacher = _find_nested_text(item, TEACHER_KEYS)
+        location = _find_nested_relation_text(item, ROOM_KEYS, _room_text)
+        teacher = _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text)
         school_name = school_name_from_data(data)
         description_parts = []
         if location:
             description_parts.append(f"Raum: {location}")
         if teacher:
-            description_parts.append(teacher)
+            description_parts.append(f"Lehrer: {teacher}")
         description = "\n".join(description_parts) or None
 
         if lesson_date:
@@ -446,7 +501,7 @@ def _lesson_events(
                             for part in (
                                 f"Vertretung für: {title}",
                                 f"Raum: {substitution_location}" if substitution_location else None,
-                                substitution_teacher,
+                                f"Lehrer: {substitution_teacher}" if substitution_teacher else None,
                                 substitution_notes,
                             )
                             if part
