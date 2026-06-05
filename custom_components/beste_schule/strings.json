@@ -2,22 +2,43 @@
   "config": {
     "step": {
       "user": {
-        "title": "beste.schule einrichten",
-        "description": "Du brauchst einen Personal Access Token aus deinem beste.schule-Benutzerkonto.\n\nSo bekommst du ihn:\n1. Bei beste.schule anmelden.\n2. Oben rechts den eigenen Namen anklicken und das Benutzerkonto öffnen.\n3. Links den Reiter API auswählen.\n4. Unten bei Personal Access Token einen neuen Token erstellen.\n5. Den Token kopieren und hier einfügen.",
+        "title": "Set up beste.schule",
+        "description": "You need a Personal Access Token from your beste.schule user account.\n\nHow to get it:\n1. Sign in to beste.schule.\n2. Open your user account from your name in the top right.\n3. Select API in the left menu.\n4. Create a new token under Personal Access Token.\n5. Copy the token and paste it here.",
         "data": {
           "token": "Personal Access Token"
         },
         "data_description": {
-          "token": "Der Token aus dem Bereich API im beste.schule-Benutzerkonto."
+          "token": "The token from the API section in your beste.schule user account."
         }
       }
     },
     "error": {
-      "cannot_connect": "Die API konnte nicht erreicht oder nicht eindeutig geprüft werden. Bitte Internetverbindung und API-URL kontrollieren.",
-      "invalid_auth": "beste.schule hat den Token abgelehnt. Bitte einen neuen Personal Access Token erzeugen und vollständig einfügen."
+      "cannot_connect": "The API could not be reached or checked reliably. Please check your internet connection.",
+      "invalid_auth": "beste.schule rejected the token. Please create a new Personal Access Token and paste it completely."
     },
     "abort": {
-      "already_configured": "beste.schule ist bereits eingerichtet."
+      "already_configured": "beste.schule is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "announcements": {
+        "name": "Announcements"
+      },
+      "checklists": {
+        "name": "Checklists"
+      },
+      "grades": {
+        "name": "Grades"
+      },
+      "finalgrades": {
+        "name": "Final grades"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "name": "Calendar"
+      }
     }
   }
 }

@@ -13,11 +13,20 @@ from .api import BesteSchuleApi, BesteSchuleApiError, BesteSchuleAuthError
 from .const import CONF_TOKEN, DEFAULT_API_URL, DEFAULT_NAME, DOMAIN
 
 
-def _name_from_data(data: Any) -> str | None:
-    """Extract a readable person name from common API response shapes."""
+def _value_from_keys(data: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """Return the first non-empty string value for any key."""
+    for key in keys:
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _first_name_from_data(data: Any) -> str | None:
+    """Extract a first name from common API response shapes."""
     if isinstance(data, list):
         for item in data:
-            name = _name_from_data(item)
+            name = _first_name_from_data(item)
             if name:
                 return name
         return None
@@ -26,20 +35,36 @@ def _name_from_data(data: Any) -> str | None:
         return None
 
     for key in ("data", "student", "child", "pupil", "person", "user", "profile"):
-        name = _name_from_data(data.get(key))
+        name = _first_name_from_data(data.get(key))
         if name:
             return name
 
-    for key in ("displayName", "display_name", "fullName", "full_name", "name"):
-        value = data.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+    first_name = _value_from_keys(
+        data,
+        (
+            "firstName",
+            "first_name",
+            "firstname",
+            "givenName",
+            "given_name",
+            "givenname",
+            "forename",
+            "vorname",
+        ),
+    )
+    if first_name:
+        return first_name
 
-    first_name = data.get("firstName") or data.get("first_name") or data.get("firstname")
-    last_name = data.get("lastName") or data.get("last_name") or data.get("lastname")
-    parts = [part.strip() for part in (first_name, last_name) if isinstance(part, str)]
-    if parts:
-        return " ".join(parts)
+    full_name = _value_from_keys(
+        data,
+        ("displayName", "display_name", "fullName", "full_name"),
+    )
+    if full_name:
+        return full_name.split()[0]
+
+    name = _value_from_keys(data, ("name",))
+    if name and " " in name:
+        return name.split()[0]
 
     return None
 
@@ -48,7 +73,7 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> str:
     """Validate the entered token."""
     api = BesteSchuleApi(hass, DEFAULT_API_URL, data[CONF_TOKEN])
     await api.validate_token()
-    return _name_from_data(await api.fetch_suggested_name_data()) or DEFAULT_NAME
+    return _first_name_from_data(await api.fetch_suggested_name_data()) or DEFAULT_NAME
 
 
 class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

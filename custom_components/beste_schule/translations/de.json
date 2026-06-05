@@ -19,5 +19,26 @@
     "abort": {
       "already_configured": "beste.schule ist bereits eingerichtet."
     }
+  },
+  "entity": {
+    "sensor": {
+      "announcements": {
+        "name": "Mitteilungen"
+      },
+      "checklists": {
+        "name": "Checklisten"
+      },
+      "grades": {
+        "name": "Noten"
+      },
+      "finalgrades": {
+        "name": "Zeugnisnoten"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "name": "Kalender"
+      }
+    }
   }
 }

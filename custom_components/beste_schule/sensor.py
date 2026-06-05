@@ -22,10 +22,10 @@ async def async_setup_entry(
     coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [
-            BesteSchuleCountSensor(entry, coordinator, "Announcements", "announcements"),
-            BesteSchuleCountSensor(entry, coordinator, "Checklists", "checklists"),
-            BesteSchuleCountSensor(entry, coordinator, "Grades", "grades"),
-            BesteSchuleCountSensor(entry, coordinator, "Final grades", "finalgrades"),
+            BesteSchuleCountSensor(entry, coordinator, "announcements"),
+            BesteSchuleCountSensor(entry, coordinator, "checklists"),
+            BesteSchuleCountSensor(entry, coordinator, "grades"),
+            BesteSchuleCountSensor(entry, coordinator, "finalgrades"),
         ]
     )
 
@@ -41,13 +41,11 @@ class BesteSchuleCountSensor(
         self,
         entry: ConfigEntry,
         coordinator: BesteSchuleDataUpdateCoordinator,
-        name: str,
         data_key: str,
     ) -> None:
         super().__init__(coordinator)
         self._attr_translation_key = data_key
         self._attr_unique_id = f"{entry.entry_id}_{data_key}"
-        self._attr_name = name
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             manufacturer="beste.schule",

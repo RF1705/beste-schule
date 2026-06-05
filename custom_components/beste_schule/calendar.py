@@ -31,7 +31,7 @@ class BesteSchuleCalendar(
     """Placeholder calendar until API response shapes are mapped."""
 
     _attr_has_entity_name = True
-    _attr_name = "Calendar"
+    _attr_translation_key = "calendar"
 
     def __init__(
         self,
