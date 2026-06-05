@@ -15,7 +15,7 @@ from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 
-INTEGRATION_VERSION = "0.1.4"
+INTEGRATION_VERSION = "0.1.5"
 
 TIMETABLE_KEYS = (
     "time_tables",

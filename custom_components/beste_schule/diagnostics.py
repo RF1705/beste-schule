@@ -40,6 +40,8 @@ IMPORTANT_KEYS = {
     "subject",
     "room",
     "teacher",
+    "times",
+    "nr",
     "notes",
     "lessons",
     "data",

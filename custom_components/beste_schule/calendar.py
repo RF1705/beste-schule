@@ -95,18 +95,7 @@ TITLE_KEYS = (
 ROOM_KEYS = ("room", "rooms", "roomName", "room_name")
 TEACHER_KEYS = ("teacher", "teachers", "teacherName", "teacher_name")
 TIMETABLE_SOURCE_KEYS = (
-    "time_tables",
     "time_tables_current",
-    "time_tables_show_current",
-    "time_tables_show_current_kebab",
-    "time_table_times",
-    "time_table_time_lessons",
-    "journal_days",
-    "journal_weeks",
-    "journal_lessons",
-    "journal_lesson_student",
-    "journal_day_student",
-    "journal_lessons_student",
 )
 
 
@@ -117,7 +106,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up beste.schule calendars."""
     coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([BesteSchuleCalendar(entry, coordinator)])
+    async_add_entities(
+        [
+            BesteSchuleTimetableCalendar(entry, coordinator),
+            BesteSchuleAbsenceCalendar(entry, coordinator),
+        ]
+    )
 
 
 def _iter_values(value: Any) -> Iterable[dict[str, Any]]:
@@ -271,7 +265,7 @@ def _period_time_map(data: dict[str, Any]) -> dict[int, tuple[time, time]]:
             if not isinstance(period, dict):
                 continue
 
-            number = _find_value(period, LESSON_NR_KEYS)
+            number = _find_value(period, LESSON_NR_KEYS + ("lesson", "period"))
             start_time = _parse_time(_find_value(period, START_KEYS))
             end_time = _parse_time(_find_value(period, END_KEYS))
             if number is None or start_time is None or end_time is None:
@@ -308,57 +302,6 @@ def _event_key(day: date, start: time, end: time, title: str, location: str | No
     return f"{day.isoformat()}|{start.isoformat()}|{end.isoformat()}|{title}|{location or ''}"
 
 
-def _note_events(
-    item: dict[str, Any],
-    start_date: datetime,
-    end_date: datetime,
-    seen: set[str],
-) -> list[CalendarEvent]:
-    """Convert journal lesson notes into all-day calendar events."""
-    lesson_date = _parse_date(_find_value(item, DATE_KEYS))
-    if lesson_date is None:
-        return []
-
-    event_start = lesson_date
-    event_end = lesson_date + timedelta(days=1)
-    if event_end <= start_date.date() or event_start >= end_date.date():
-        return []
-
-    notes = item.get("notes")
-    if isinstance(notes, dict):
-        notes = [notes]
-    if not isinstance(notes, list):
-        return []
-
-    subject = _find_nested_text(item, TITLE_KEYS)
-    events: list[CalendarEvent] = []
-    for note in notes:
-        if not isinstance(note, dict):
-            continue
-
-        description = _extract_text(note.get("description"))
-        if not description:
-            continue
-
-        note_type = _find_nested_text(note, ("type", "typeName", "type_name", "name"))
-        summary_parts = [part for part in (subject, note_type) if part]
-        summary = " - ".join(summary_parts) if summary_parts else description
-        key = f"{lesson_date.isoformat()}|note|{summary}|{description}"
-        if key in seen:
-            continue
-
-        seen.add(key)
-        events.append(
-            CalendarEvent(
-                summary=summary,
-                start=event_start,
-                end=event_end,
-                description=description,
-            )
-        )
-    return events
-
-
 def _lesson_events(
     data: dict[str, Any],
     start_date: datetime,
@@ -377,8 +320,6 @@ def _lesson_events(
     for item in _iter_values(source_data):
         if not isinstance(item, dict):
             continue
-
-        events.extend(_note_events(item, start_date, end_date, seen))
 
         lesson_date = _parse_date(_find_value(item, DATE_KEYS))
         weekday = _parse_weekday(_find_value(item, WEEKDAY_KEYS))
@@ -431,7 +372,64 @@ def _lesson_events(
     return events
 
 
-class BesteSchuleCalendar(
+def _absence_text(value: Any) -> str | None:
+    """Extract absence text from common absence shapes."""
+    text = _extract_text(value)
+    if text:
+        return text
+    if isinstance(value, dict):
+        for key in ("reason", "type", "status", "name", "title"):
+            text = _extract_text(value.get(key))
+            if text:
+                return text
+    return None
+
+
+def _absence_events(
+    data: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+) -> list[CalendarEvent]:
+    """Convert day-student absence data into all-day calendar events."""
+    events: list[CalendarEvent] = []
+    seen: set[str] = set()
+    source = data.get("journal_day_student")
+
+    for item in _iter_values(source):
+        if not isinstance(item, dict):
+            continue
+
+        lesson_date = _parse_date(_find_value(item, DATE_KEYS))
+        if lesson_date is None:
+            continue
+
+        absent = item.get("present") == 0 or bool(item.get("absence"))
+        if not absent:
+            continue
+
+        event_start = lesson_date
+        event_end = lesson_date + timedelta(days=1)
+        if event_end <= start_date.date() or event_start >= end_date.date():
+            continue
+
+        reason = _absence_text(item.get("absence")) or "Abwesend"
+        key = f"{lesson_date.isoformat()}|absence"
+        if key in seen:
+            continue
+        seen.add(key)
+        events.append(
+            CalendarEvent(
+                summary=reason,
+                start=event_start,
+                end=event_end,
+            )
+        )
+
+    events.sort(key=lambda event: event.start)
+    return events
+
+
+class BesteSchuleTimetableCalendar(
     CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
 ):
     """Calendar for beste.schule timetable entries."""
@@ -445,7 +443,7 @@ class BesteSchuleCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_calendar"
+        self._attr_unique_id = f"{entry.entry_id}_timetable"
         self._entry = entry
 
     @property
@@ -468,3 +466,42 @@ class BesteSchuleCalendar(
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         return _lesson_events(self.coordinator.data, start_date, end_date)
+
+
+class BesteSchuleAbsenceCalendar(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
+):
+    """Calendar for beste.schule absence entries."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "absences"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_absences"
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        """Return the current or next upcoming event."""
+        now = dt_util.now()
+        events = _absence_events(self.coordinator.data, now, now + timedelta(days=60))
+        return events[0] if events else None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        """Return calendar events within a datetime range."""
+        return _absence_events(self.coordinator.data, start_date, end_date)
