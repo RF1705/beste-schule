@@ -358,6 +358,48 @@ def _parse_date(value: Any) -> date | None:
     return None
 
 
+def _timetable_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Return the current timetable object from the API response."""
+    timetable = data.get("time_tables_current")
+    if isinstance(timetable, dict) and isinstance(timetable.get("data"), dict):
+        return timetable["data"]
+    return {}
+
+
+def _timetable_no_school_dates(data: dict[str, Any]) -> set[date]:
+    """Return dates where the current timetable explicitly says there is no school."""
+    timetable = _timetable_data(data)
+    values = timetable.get("no_school_dates")
+    if not isinstance(values, list):
+        return set()
+
+    days: set[date] = set()
+    for value in values:
+        parsed = _parse_date(value)
+        if parsed is not None:
+            days.add(parsed)
+    return days
+
+
+def _timetable_valid_range(data: dict[str, Any]) -> tuple[date | None, date | None]:
+    """Return the current timetable validity range."""
+    timetable = _timetable_data(data)
+    return (
+        _parse_date(timetable.get("valid_from")),
+        _parse_date(timetable.get("valid_to")),
+    )
+
+
+def _is_timetable_school_day(data: dict[str, Any], day: date) -> bool:
+    """Return whether timetable events should be generated for a date."""
+    valid_from, valid_to = _timetable_valid_range(data)
+    if valid_from is not None and day < valid_from:
+        return False
+    if valid_to is not None and day > valid_to:
+        return False
+    return day not in _timetable_no_school_dates(data)
+
+
 def _date_for_weekday(start_date: date, weekday: int) -> date:
     """Return the first date at or after start_date matching weekday."""
     return start_date + timedelta(days=(weekday - start_date.weekday()) % 7)
@@ -475,6 +517,9 @@ def _lesson_events(
                 current_day += timedelta(days=7)
 
         for current_day in lesson_dates:
+            if not _is_timetable_school_day(data, current_day):
+                continue
+
             try:
                 overlay_value = overlay.get((current_day, int(number)))
             except (TypeError, ValueError):

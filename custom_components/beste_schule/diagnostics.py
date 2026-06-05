@@ -60,6 +60,7 @@ IMPORTANT_KEYS = {
     "times",
     "nr",
     "notes",
+    "no_school_dates",
     "lessons",
     "data",
     "meta",
