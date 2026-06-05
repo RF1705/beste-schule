@@ -64,6 +64,6 @@ def _async_update_device_info(
 
     device_registry.async_update_device(
         device.id,
-        manufacturer=school_name,
+        manufacturer="beste.schule",
         model=school_name,
     )

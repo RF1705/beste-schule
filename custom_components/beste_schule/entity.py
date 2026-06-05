@@ -75,7 +75,7 @@ def besteschule_device_info(entry: ConfigEntry, data: dict[str, Any]) -> DeviceI
     school_name = school_name_from_data(data) or entry.data.get(CONF_SCHOOL_NAME)
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        manufacturer=school_name or "beste.schule",
+        manufacturer="beste.schule",
         model=school_name or "beste.schule",
         name=entry.title,
         configuration_url="https://beste.schule",
