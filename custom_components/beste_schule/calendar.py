@@ -111,6 +111,7 @@ async def async_setup_entry(
         [
             BesteSchuleTimetableCalendar(entry, coordinator),
             BesteSchuleAbsenceCalendar(entry, coordinator),
+            BesteSchuleHomeworkCalendar(entry, coordinator),
         ]
     )
 
@@ -570,6 +571,97 @@ def _absence_events(
     return events
 
 
+def _homework_events(
+    data: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+) -> list[CalendarEvent]:
+    """Convert visible homework journal notes into all-day calendar events."""
+    events: list[CalendarEvent] = []
+    seen: set[str] = set()
+    school_name = school_name_from_data(data)
+
+    for source_key in ("journal_weeks", "journal_lesson_student"):
+        for item in _iter_values(data.get(source_key)):
+            if not isinstance(item, dict):
+                continue
+
+            note_date = _note_date(item)
+            notes = item.get("notes")
+            if note_date is None or not isinstance(notes, list):
+                continue
+
+            subject = _find_nested_text(
+                item,
+                ("subject", "subjects", "subjectName", "subject_name"),
+            )
+            for note in notes:
+                if not isinstance(note, dict) or not _is_homework_note(note):
+                    continue
+
+                description = _extract_text(note.get("description"))
+                title = _homework_title(subject, description)
+                event_start = note_date
+                event_end = note_date + timedelta(days=1)
+                if event_end <= start_date.date() or event_start >= end_date.date():
+                    continue
+
+                key = f"{note_date.isoformat()}|{note.get('id')}|{title}|{description or ''}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                events.append(
+                    CalendarEvent(
+                        summary=title,
+                        start=event_start,
+                        end=event_end,
+                        location=school_name,
+                        description=description,
+                    )
+                )
+
+    events.sort(key=lambda event: event.start)
+    return events
+
+
+def _note_date(item: dict[str, Any]) -> date | None:
+    """Find the date a journal note belongs to."""
+    found = _parse_date(_find_value(item, DATE_KEYS))
+    if found:
+        return found
+
+    for key in ("day", "lesson", "notable"):
+        value = item.get(key)
+        if isinstance(value, dict):
+            found = _note_date(value)
+            if found:
+                return found
+
+    return None
+
+
+def _is_homework_note(note: dict[str, Any]) -> bool:
+    """Return whether a journal note looks like homework."""
+    text = _all_text(
+        {
+            "type": note.get("type"),
+            "description": note.get("description"),
+        }
+    ).lower()
+    return "hausauf" in text or "homework" in text
+
+
+def _homework_title(subject: str | None, description: str | None) -> str:
+    """Return a concise homework event title."""
+    if subject:
+        return f"Hausaufgabe: {subject}"
+    if description:
+        first_line = description.splitlines()[0].strip()
+        if first_line:
+            return first_line[:80]
+    return "Hausaufgabe"
+
+
 class BesteSchuleTimetableCalendar(
     CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
 ):
@@ -650,3 +742,42 @@ class BesteSchuleAbsenceCalendar(
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         return _absence_events(self.coordinator.data, start_date, end_date)
+
+
+class BesteSchuleHomeworkCalendar(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
+):
+    """Calendar for visible beste.schule homework entries."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "homework"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_homework"
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        """Return the current or next upcoming event."""
+        now = dt_util.now()
+        events = _homework_events(self.coordinator.data, now, now + timedelta(days=60))
+        return events[0] if events else None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        """Return calendar events within a datetime range."""
+        return _homework_events(self.coordinator.data, start_date, end_date)

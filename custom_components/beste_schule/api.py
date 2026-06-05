@@ -112,12 +112,26 @@ class BesteSchuleApi:
         routes = {
             "time_tables_current": ("time-tables/current", None),
             "journal_weeks": (
-                "journal/weeks",
-                {"include": "days,lessons,subject,room,teacher,group,time"},
+                (
+                    "journal/weeks",
+                    {
+                        "include": (
+                            "days,days.notes,days.notes.type,lessons,lessons.notes,"
+                            "lessons.notes.type,subject,room,teacher,group,time,notes,notes.type"
+                        )
+                    },
+                ),
+                (
+                    "journal/weeks",
+                    {"include": "days,lessons,subject,room,teacher,group,time"},
+                ),
             ),
             "journal_lesson_student": (
-                "journal/lesson-student",
-                None,
+                (
+                    "journal/lesson-student",
+                    {"include": "lesson,lesson.day,lesson.subject,notes,notes.type"},
+                ),
+                ("journal/lesson-student", None),
             ),
             "journal_day_student": (
                 "journal/day-student",
@@ -135,9 +149,30 @@ class BesteSchuleApi:
             "finalgrades": ("finalgrades", None),
         }
 
-        for key, (route, params) in routes.items():
-            try:
-                data[key] = await self.request(route, params=params)
-            except BesteSchuleApiError as err:
-                data[key] = {"error": str(err)}
+        for key, route_info in routes.items():
+            data[key] = await self._request_first_available(route_info)
         return data
+
+    async def _request_first_available(
+        self,
+        route_info: tuple[str, dict[str, Any] | None]
+        | tuple[tuple[str, dict[str, Any] | None], ...],
+    ) -> Any:
+        """Request a route, optionally trying fallback route/parameter pairs."""
+        requests = (
+            (route_info,)
+            if isinstance(route_info[0], str)
+            else route_info
+        )
+        last_error: BesteSchuleApiError | None = None
+        for request_route, request_params in requests:
+            try:
+                return await self.request(request_route, params=request_params)
+            except BesteSchuleApiError as err:
+                last_error = err
+
+        return {
+            "error": str(last_error)
+            if last_error
+            else "Unknown beste.schule API error"
+        }

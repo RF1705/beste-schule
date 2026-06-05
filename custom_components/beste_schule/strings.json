@@ -38,6 +38,9 @@
       },
       "absences": {
         "name": "Absences"
+      },
+      "homework": {
+        "name": "Homework"
       }
     },
     "binary_sensor": {
