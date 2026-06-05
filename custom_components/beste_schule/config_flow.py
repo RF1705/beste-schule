@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 
-from .api import BesteSchuleApi, BesteSchuleApiError
+from .api import BesteSchuleApi, BesteSchuleApiError, BesteSchuleAuthError
 from .const import CONF_API_URL, CONF_TOKEN, DEFAULT_API_URL, DOMAIN
 
 
@@ -33,6 +33,8 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 await _validate_input(self.hass, user_input)
+            except BesteSchuleAuthError:
+                errors["base"] = "invalid_auth"
             except BesteSchuleApiError:
                 errors["base"] = "cannot_connect"
             else:

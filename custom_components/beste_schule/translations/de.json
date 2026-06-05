@@ -15,7 +15,8 @@
       }
     },
     "error": {
-      "cannot_connect": "Der Token konnte nicht geprüft werden. Bitte Token, Internetverbindung und API-URL kontrollieren."
+      "cannot_connect": "Die API konnte nicht erreicht oder nicht eindeutig geprüft werden. Bitte Internetverbindung und API-URL kontrollieren.",
+      "invalid_auth": "beste.schule hat den Token abgelehnt. Bitte einen neuen Personal Access Token erzeugen und vollständig einfügen."
     },
     "abort": {
       "already_configured": "beste.schule ist bereits eingerichtet."

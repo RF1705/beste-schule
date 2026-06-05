@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientError, ClientResponseError
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -12,6 +12,10 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 class BesteSchuleApiError(Exception):
     """Raised when the beste.schule API request fails."""
+
+
+class BesteSchuleAuthError(BesteSchuleApiError):
+    """Raised when beste.schule rejects the token."""
 
 
 class BesteSchuleApi:
@@ -39,15 +43,42 @@ class BesteSchuleApi:
             response.raise_for_status()
             return await response.json()
         except ClientResponseError as err:
+            if err.status in (401, 403):
+                raise BesteSchuleAuthError(
+                    f"beste.schule rejected the token for {route}"
+                ) from err
             raise BesteSchuleApiError(
                 f"beste.schule returned HTTP {err.status} for {route}"
             ) from err
-        except Exception as err:
+        except ClientError as err:
             raise BesteSchuleApiError(f"Could not request beste.schule route {route}") from err
 
-    async def validate_token(self) -> None:
-        """Validate that the token can access the current user endpoint."""
-        await self.request("user-management/me")
+    async def validate_token(self) -> Any:
+        """Validate that the token can access at least one known read-only route."""
+        routes = (
+            "user-management/me",
+            "me",
+            "users/me",
+            "status",
+            "years",
+            "students",
+            "groups",
+        )
+        last_error: BesteSchuleApiError | None = None
+        saw_auth_error = False
+
+        for route in routes:
+            try:
+                return await self.request(route)
+            except BesteSchuleAuthError as err:
+                saw_auth_error = True
+                last_error = err
+            except BesteSchuleApiError as err:
+                last_error = err
+
+        if saw_auth_error:
+            raise BesteSchuleAuthError("beste.schule rejected the token") from last_error
+        raise BesteSchuleApiError("Could not validate the beste.schule token") from last_error
 
     async def fetch_overview(self) -> dict[str, Any]:
         """Fetch the first read-only routes we want to explore."""
