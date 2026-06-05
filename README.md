@@ -90,7 +90,7 @@ source_attribute: plan
 source_time_key: Stunde
 ```
 
-The sensor exposes a single `plan` attribute for the current Monday-Friday week. The week changes automatically based on the current date.
+The sensor exposes a single `plan` attribute for the current Monday-Friday week. The week changes automatically based on the current date. Cancelled lessons are included as `Ausfall: <subject>` cells.
 
 Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
 

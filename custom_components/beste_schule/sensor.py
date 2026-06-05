@@ -372,7 +372,12 @@ def _timetable_card_rows(
         microsecond=0,
     )
     week_end = week_start + timedelta(days=7)
-    events = _lesson_events(coordinator.data, week_start, week_end)
+    events = _lesson_events(
+        coordinator.data,
+        week_start,
+        week_end,
+        include_cancelled=True,
+    )
     rows: dict[tuple[str, str], dict[str, Any]] = {}
 
     for event in events:
@@ -395,14 +400,25 @@ def _timetable_card_rows(
                 "Mi": "",
                 "Do": "",
                 "Fr": "",
+                "cell_styles": [None, None, None, None, None],
             },
         )
         day_key = _weekday_key(weekday)
         cell = _event_cell_text(event)
         row[day_key] = f"{row[day_key]}\n\n{cell}".strip() if row[day_key] else cell
+        if event.summary.startswith("Ausfall:"):
+            row["cell_styles"][weekday] = {
+                "bg": "#ff5252",
+                "bg_alpha": 0.18,
+                "color": "#ffebee",
+            }
 
     return [
-        rows[key]
+        {
+            key: value
+            for key, value in rows[key].items()
+            if key != "cell_styles" or any(value)
+        }
         for key in sorted(rows)
     ]
 

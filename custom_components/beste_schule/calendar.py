@@ -463,6 +463,7 @@ def _lesson_events(
     data: dict[str, Any],
     start_date: datetime,
     end_date: datetime,
+    include_cancelled: bool = False,
 ) -> list[CalendarEvent]:
     """Convert timetable-like API data into HA calendar events."""
     events: list[CalendarEvent] = []
@@ -526,7 +527,8 @@ def _lesson_events(
                 overlay_value = None
             overlay_status = overlay_value.get("status") if overlay_value else None
             if overlay_status == "cancelled":
-                continue
+                if not include_cancelled:
+                    continue
 
             event_start = datetime.combine(current_day, start_time, start_date.tzinfo)
             event_end = datetime.combine(current_day, end_time, start_date.tzinfo)
@@ -535,8 +537,21 @@ def _lesson_events(
                 if key not in seen:
                     seen.add(key)
                     substitution_title = overlay_value.get("title") if overlay_value else None
-                    summary = substitution_title or title
+                    summary = (
+                        f"Ausfall: {title}"
+                        if overlay_status == "cancelled"
+                        else substitution_title or title
+                    )
                     event_description = description
+                    if overlay_status == "cancelled":
+                        event_description = "\n".join(
+                            part
+                            for part in (
+                                "Status: Ausfall",
+                                description,
+                            )
+                            if part
+                        )
                     if overlay_status == "substitution":
                         substitution_location = overlay_value.get("location") if overlay_value else None
                         substitution_teacher = overlay_value.get("teacher") if overlay_value else None
