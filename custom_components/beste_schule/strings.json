@@ -22,23 +22,11 @@
   },
   "entity": {
     "sensor": {
-      "announcements": {
-        "name": "Announcements"
+      "current_lesson": {
+        "name": "Current lesson"
       },
-      "checklists": {
-        "name": "Checklists"
-      },
-      "grades": {
-        "name": "Grades"
-      },
-      "finalgrades": {
-        "name": "Final grades"
-      },
-      "timetable_data": {
-        "name": "Timetable data"
-      },
-      "school_location": {
-        "name": "School"
+      "next_lesson": {
+        "name": "Next lesson"
       }
     },
     "calendar": {
@@ -50,13 +38,8 @@
       }
     },
     "binary_sensor": {
-      "at_school": {
-        "name": "At school"
-      }
-    },
-    "device_tracker": {
-      "school_tracker": {
-        "name": "beste.schule location"
+      "school_time": {
+        "name": "School time"
       }
     }
   }

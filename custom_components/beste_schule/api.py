@@ -58,16 +58,9 @@ class BesteSchuleApi:
     async def validate_token(self) -> Any:
         """Validate that the token can access at least one known read-only route."""
         routes = (
-            "user-management/me",
-            "me",
-            "users/me",
             "students",
-            "children",
-            "pupils",
-            "persons",
-            "groups",
-            "years",
-            "status",
+            "school",
+            "time-tables/current",
         )
         last_error: BesteSchuleApiError | None = None
         saw_auth_error = False
@@ -91,9 +84,6 @@ class BesteSchuleApi:
             "students",
             "children",
             "pupils",
-            "user-management/me",
-            "me",
-            "users/me",
         )
 
         for route in routes:
@@ -108,7 +98,6 @@ class BesteSchuleApi:
         data: dict[str, Any] = {}
 
         for key, (route, params) in {
-            "me": ("user-management/me", None),
             "school": ("school", None),
             "students": ("students", None),
         }.items():
@@ -117,42 +106,14 @@ class BesteSchuleApi:
             except BesteSchuleApiError as err:
                 data[key] = {"error": str(err)}
 
-        student_id = _student_id_from_data(data.get("students"))
         range_start = dt_util.now().date() - timedelta(days=7)
         range_end = dt_util.now().date() + timedelta(days=60)
 
         routes = {
-            "time_tables": (
-                "time-tables",
-                {
-                    "include": (
-                        "times,lessons,subject,subjects,room,rooms,teacher,"
-                        "teachers,group,groups"
-                    )
-                },
-            ),
             "time_tables_current": ("time-tables/current", None),
-            "time_tables_show_current": ("time-tables/showCurrent", None),
-            "time_tables_show_current_kebab": ("time-tables/show-current", None),
-            "time_table_times": (
-                "time-table-times",
-                {"include": "lessons,subject,room,teacher,group"},
-            ),
-            "time_table_time_lessons": (
-                "time-table-time-lessons",
-                {"include": "subject,room,teacher,group,time"},
-            ),
-            "journal_days": (
-                "journal/days",
-                {"include": "lessons,subject,room,teacher,group,time"},
-            ),
             "journal_weeks": (
                 "journal/weeks",
                 {"include": "days,lessons,subject,room,teacher,group,time"},
-            ),
-            "journal_lessons": (
-                "journal/lessons",
-                {"include": "day,subject,room,teacher,group,time"},
             ),
             "journal_lesson_student": (
                 "journal/lesson-student",
@@ -170,22 +131,9 @@ class BesteSchuleApi:
                     "per_page": 100,
                 },
             ),
-            "announcements": ("announcements", None),
-            "checklists": ("checklists", None),
             "grades": ("grades", None),
             "finalgrades": ("finalgrades", None),
         }
-        if student_id is not None:
-            routes["journal_lessons_student"] = (
-                "journal/lessons",
-                {
-                    "include": "day,subject,teachers,group,notes.type",
-                    "filter[student]": student_id,
-                    "filter[range]": f"{range_start.isoformat()},{range_end.isoformat()}",
-                },
-            )
-        else:
-            data["journal_lessons_student"] = {"error": "Could not determine student id"}
 
         for key, (route, params) in routes.items():
             try:
@@ -193,31 +141,3 @@ class BesteSchuleApi:
             except BesteSchuleApiError as err:
                 data[key] = {"error": str(err)}
         return data
-
-
-def _student_id_from_data(data: Any) -> int | str | None:
-    """Extract the first student id from common API response shapes."""
-    if isinstance(data, dict) and isinstance(data.get("data"), list):
-        return _student_id_from_data(data["data"])
-
-    if isinstance(data, list):
-        for item in data:
-            student_id = _student_id_from_data(item)
-            if student_id is not None:
-                return student_id
-        return None
-
-    if not isinstance(data, dict):
-        return None
-
-    for key in ("id", "student_id", "studentId"):
-        value = data.get(key)
-        if isinstance(value, (int, str)) and str(value).strip():
-            return value
-
-    for key in ("student", "child", "pupil"):
-        student_id = _student_id_from_data(data.get(key))
-        if student_id is not None:
-            return student_id
-
-    return None

@@ -1,4 +1,10 @@
 {
   "name": "beste.schule",
+  "homeassistant": "2025.1.0",
+  "domains": [
+    "binary_sensor",
+    "calendar",
+    "sensor"
+  ],
   "render_readme": true
 }

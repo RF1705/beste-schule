@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
@@ -11,13 +12,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
+from .calendar import _lesson_events
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
-from .entity import school_address_from_data, school_coordinates_from_data, school_name_from_data
 
-INTEGRATION_VERSION = "0.1.12"
 CLASSWORK_MARKERS = (
     "klassenarbeit",
     "klassenarbeiten",
@@ -25,21 +26,6 @@ CLASSWORK_MARKERS = (
     "testat",
     "schulaufgabe",
     "klausur",
-)
-
-TIMETABLE_KEYS = (
-    "time_tables",
-    "time_tables_current",
-    "time_tables_show_current",
-    "time_tables_show_current_kebab",
-    "time_table_times",
-    "time_table_time_lessons",
-    "journal_days",
-    "journal_weeks",
-    "journal_lessons",
-    "journal_lesson_student",
-    "journal_day_student",
-    "journal_lessons_student",
 )
 
 
@@ -52,84 +38,14 @@ async def async_setup_entry(
     coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [
-            BesteSchuleCountSensor(entry, coordinator, "announcements"),
-            BesteSchuleCountSensor(entry, coordinator, "checklists"),
-            BesteSchuleCountSensor(entry, coordinator, "grades"),
-            BesteSchuleCountSensor(entry, coordinator, "finalgrades"),
-            BesteSchuleTimetableDiagnosticsSensor(entry, coordinator),
-            BesteSchuleSchoolLocationSensor(entry, coordinator),
+            BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
+            BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
             *[
                 BesteSchuleGradeAverageSensor(entry, coordinator, subject)
                 for subject in _grade_subjects(coordinator.data)
             ],
         ]
     )
-
-
-def _count_items(value: Any) -> int | None:
-    """Return a useful count for common API response shapes."""
-    if isinstance(value, list):
-        return len(value)
-    if isinstance(value, dict):
-        if isinstance(value.get("data"), list):
-            return len(value["data"])
-        for key in ("lessons", "times", "days", "weeks", "items"):
-            if isinstance(value.get(key), list):
-                return len(value[key])
-        if "error" in value:
-            return None
-    return None
-
-
-def _response_status(value: Any) -> str:
-    """Return a compact diagnostic status for an API response."""
-    if isinstance(value, dict) and isinstance(value.get("error"), str):
-        return value["error"]
-
-    count = _count_items(value)
-    if count is not None:
-        return str(count)
-
-    if value is None:
-        return "missing"
-
-    if isinstance(value, dict):
-        keys = ", ".join(sorted(str(key) for key in value.keys())[:8])
-        return f"dict: {keys}" if keys else "dict"
-
-    return type(value).__name__
-
-
-def _first_id(value: Any) -> str:
-    """Return the first id found in common response shapes."""
-    if isinstance(value, dict) and isinstance(value.get("data"), list):
-        return _first_id(value["data"])
-    if isinstance(value, list):
-        for item in value:
-            found = _first_id(item)
-            if found != "missing":
-                return found
-    if isinstance(value, dict):
-        found = value.get("id")
-        if isinstance(found, (int, str)):
-            return str(found)
-    return "missing"
-
-
-def _school_status(value: Any) -> str:
-    """Return a compact school diagnostic status."""
-    if isinstance(value, dict) and isinstance(value.get("error"), str):
-        return value["error"]
-    if isinstance(value, dict):
-        data = value.get("data")
-        if isinstance(data, dict):
-            name = data.get("name") or data.get("displayName") or data.get("display_name")
-            if isinstance(name, str) and name.strip():
-                return name.strip()
-        name = value.get("name") or value.get("displayName") or value.get("display_name")
-        if isinstance(name, str) and name.strip():
-            return name.strip()
-    return _response_status(value)
 
 
 def _data_list(value: Any) -> list[Any]:
@@ -307,10 +223,10 @@ def _slug(value: str) -> str:
     return slug.strip("_") or "unknown"
 
 
-class BesteSchuleCountSensor(
+class BesteSchuleLessonSensor(
     CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
 ):
-    """Count items returned by a beste.schule route."""
+    """Expose the current or next timetable lesson."""
 
     _attr_has_entity_name = True
 
@@ -318,13 +234,13 @@ class BesteSchuleCountSensor(
         self,
         entry: ConfigEntry,
         coordinator: BesteSchuleDataUpdateCoordinator,
-        data_key: str,
+        kind: str,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_translation_key = data_key
-        self._attr_unique_id = f"{entry.entry_id}_{data_key}"
         self._entry = entry
-        self._data_key = data_key
+        self._kind = kind
+        self._attr_translation_key = kind
+        self._attr_unique_id = f"{entry.entry_id}_{kind}"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -332,9 +248,34 @@ class BesteSchuleCountSensor(
         return besteschule_device_info(self._entry, self.coordinator.data)
 
     @property
-    def native_value(self) -> int | None:
-        """Return the number of returned items, if available."""
-        return _count_items(self.coordinator.data.get(self._data_key))
+    def native_value(self) -> str | None:
+        """Return the lesson summary."""
+        event = self._event
+        return event.summary if event else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Return useful lesson details."""
+        event = self._event
+        return {
+            "start": event.start.isoformat() if event else None,
+            "end": event.end.isoformat() if event else None,
+            "location": event.location if event else None,
+            "description": event.description if event else None,
+        }
+
+    @property
+    def _event(self) -> Any | None:
+        """Return the selected lesson event."""
+        now = dt_util.now()
+        events = _lesson_events(
+            self.coordinator.data,
+            now - timedelta(minutes=1),
+            now + timedelta(days=14),
+        )
+        if self._kind == "current_lesson":
+            return next((event for event in events if event.start <= now < event.end), None)
+        return next((event for event in events if event.start > now), None)
 
 
 class BesteSchuleGradeAverageSensor(
@@ -413,89 +354,3 @@ class BesteSchuleGradeAverageSensor(
     def _grouped_values(self) -> tuple[list[float], list[float]]:
         """Return all parseable grades grouped by type."""
         return _subject_grade_values(self.coordinator.data, self._subject)
-
-
-class BesteSchuleSchoolLocationSensor(
-    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
-):
-    """Expose the school as a map-friendly sensor."""
-
-    _attr_has_entity_name = True
-    _attr_icon = "mdi:school"
-    _attr_translation_key = "school_location"
-
-    def __init__(
-        self,
-        entry: ConfigEntry,
-        coordinator: BesteSchuleDataUpdateCoordinator,
-    ) -> None:
-        super().__init__(coordinator)
-        self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_school_location"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return besteschule_device_info(self._entry, self.coordinator.data)
-
-    @property
-    def native_value(self) -> str:
-        """Return a short school label for map cards."""
-        return "56. OS" if school_name_from_data(self.coordinator.data) else "Schule"
-
-    @property
-    def extra_state_attributes(self) -> dict[str, str | float | None]:
-        """Return map and address attributes."""
-        attributes: dict[str, str | float | None] = {
-            "school": school_name_from_data(self.coordinator.data),
-            "school_address": school_address_from_data(self.coordinator.data),
-        }
-        coordinates = school_coordinates_from_data(self.coordinator.data)
-        if coordinates:
-            attributes["latitude"] = coordinates[0]
-            attributes["longitude"] = coordinates[1]
-        return attributes
-
-
-class BesteSchuleTimetableDiagnosticsSensor(
-    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
-):
-    """Expose timetable route counts for setup diagnostics."""
-
-    _attr_has_entity_name = True
-    _attr_translation_key = "timetable_data"
-
-    def __init__(
-        self,
-        entry: ConfigEntry,
-        coordinator: BesteSchuleDataUpdateCoordinator,
-    ) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_timetable_data"
-        self._entry = entry
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return besteschule_device_info(self._entry, self.coordinator.data)
-
-    @property
-    def native_value(self) -> int:
-        """Return the total number of known timetable items."""
-        return sum(
-            count
-            for key in TIMETABLE_KEYS
-            if (count := _count_items(self.coordinator.data.get(key))) is not None
-        )
-
-    @property
-    def extra_state_attributes(self) -> dict[str, str]:
-        """Return per-route diagnostic statuses."""
-        attributes = {
-            key: _response_status(self.coordinator.data.get(key))
-            for key in TIMETABLE_KEYS
-        }
-        attributes["students_first_id"] = _first_id(self.coordinator.data.get("students"))
-        attributes["school"] = _school_status(self.coordinator.data.get("school"))
-        attributes["integration_version"] = INTEGRATION_VERSION
-        return attributes

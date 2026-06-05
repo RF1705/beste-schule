@@ -1,11 +1,13 @@
 {
   "domain": "beste_schule",
   "name": "beste.schule",
-  "codeowners": [],
+  "codeowners": [
+    "@RF1705"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://beste.schule/documentation/entwickler-in",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "0.1.12"
+  "version": "0.1.0"
 }

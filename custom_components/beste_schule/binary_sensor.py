@@ -31,7 +31,7 @@ class BesteSchuleAtSchoolBinarySensor(
 
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
     _attr_has_entity_name = True
-    _attr_translation_key = "at_school"
+    _attr_translation_key = "school_time"
 
     def __init__(
         self,

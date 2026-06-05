@@ -1,22 +1,84 @@
-# beste.schule Home Assistant Integration
+# beste.schule for Home Assistant
 
-Early read-only custom integration scaffold for beste.schule.
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=RF1705&repository=beste-schule&category=integration)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rf1705-yellow?logo=buymeacoffee)](https://buymeacoffee.com/rf1705)
 
-## Planned entities
+A custom Home Assistant integration for [beste.schule](https://beste.schule/) accounts.
 
-- Calendar: lessons, substitutions, homework, exams
-- Sensors: new grades, announcements, checklist items
-- Later optional actions: report absences, mark announcements as read
+The integration is read-only. It uses a beste.schule Personal Access Token and creates Home Assistant entities for timetable, absences, school time and grade averages.
 
-## Token
+## Features
 
-Create a Personal Access Token in beste.schule under your user account, then add the
-integration in Home Assistant and paste the token there.
+- Timetable calendar with lessons from beste.schule
+- Absence calendar with all-day absence events
+- School time binary sensor
+- Current lesson and next lesson sensors
+- Grade average sensors per subject
+- English and German translations
 
-## Token erstellen
+## Installation with HACS
 
-1. Bei beste.schule anmelden.
-2. Oben rechts den eigenen Namen anklicken und das Benutzerkonto öffnen.
-3. Links den Reiter API auswählen.
-4. Unten bei Personal Access Token einen neuen Token erstellen.
-5. Den Token kopieren und in Home Assistant bei der Integration einfügen.
+1. Open the HACS repository link above.
+2. Confirm that the repository is added as an integration.
+3. Install `beste.schule` from HACS.
+4. Restart Home Assistant.
+5. Go to **Settings** -> **Devices & services** -> **Add integration**.
+6. Search for `beste.schule`.
+7. Paste your beste.schule Personal Access Token.
+
+## Manual HACS repository setup
+
+If the button does not work:
+
+1. Open Home Assistant.
+2. Go to **HACS** -> **Integrations**.
+3. Open the three-dot menu and choose **Custom repositories**.
+4. Add this repository URL:
+
+   ```text
+   https://github.com/RF1705/beste-schule
+   ```
+
+5. Select **Integration** as the category.
+6. Install `beste.schule`, restart Home Assistant and add the integration from **Devices & services**.
+
+## Personal Access Token
+
+Create a token in your beste.schule user account:
+
+1. Sign in to beste.schule.
+2. Open your user account from your name in the top right corner.
+3. Select **API** in the left menu.
+4. Create a new token under **Personal Access Token**.
+5. Copy the token and paste it into the Home Assistant setup dialog.
+
+If you registered with **Sign in with Apple**, sign in to beste.schule the same way in the browser first. The token is still created inside your beste.schule user account.
+
+## Entities
+
+The integration currently creates:
+
+- `calendar`: timetable
+- `calendar`: absences
+- `binary_sensor`: school time
+- `sensor`: current lesson
+- `sensor`: next lesson
+- `sensor`: grade average per subject
+
+Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
+
+## Roadmap
+
+- `v0.2.0`: homework calendar beta
+- Exam and classwork calendar entries
+- More robust substitution details as the API shapes become clearer
+
+## Support
+
+This project is community-maintained and not affiliated with beste.schule.
+
+If the integration helps you, you can support development here: [buymeacoffee.com/rf1705](https://buymeacoffee.com/rf1705).
+
+## License
+
+MIT
