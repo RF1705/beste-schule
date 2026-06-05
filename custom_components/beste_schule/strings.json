@@ -28,6 +28,9 @@
       "school_class": {
         "name": "Class"
       },
+      "timetable_card": {
+        "name": "Timetable card"
+      },
       "current_lesson": {
         "name": "Current lesson"
       },

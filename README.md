@@ -18,6 +18,8 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 - School time binary sensor
 - Current lesson and next lesson sensors
 - Grade average sensors per subject
+- Class sensor
+- Beta timetable JSON sensor for `fabel-smith/stundenplan-card`
 - English and German translations
 
 ## Installation with HACS
@@ -70,7 +72,25 @@ The integration currently creates:
 - `binary_sensor`: school time
 - `sensor`: current lesson
 - `sensor`: next lesson
+- `sensor`: class
+- `sensor`: timetable card beta data
 - `sensor`: grade average per subject
+
+### stundenplan-card beta
+
+Version `0.3.0b1` adds a beta sensor for [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card).
+
+Use the `Timetable card` sensor as a **Beliebiger Sensor (JSON)** source in the card:
+
+```yaml
+type: custom:stundenplan-card
+source_type: sensor
+source_entity: sensor.<child>_stundenplan_card
+source_attribute: rows_table
+source_time_key: time
+```
+
+The sensor exposes `rows_table`, `rows_json`, `plan`, `days`, `meta`, and `meta_ha` attributes for the current Monday-Friday week.
 
 Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
 

@@ -28,6 +28,9 @@
       "school_class": {
         "name": "Klasse"
       },
+      "timetable_card": {
+        "name": "Stundenplan Card"
+      },
       "current_lesson": {
         "name": "Aktuelle Stunde"
       },

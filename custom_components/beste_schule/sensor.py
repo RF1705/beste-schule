@@ -49,6 +49,7 @@ async def async_setup_entry(
         [
             BesteSchuleSickDaysSensor(entry, coordinator),
             BesteSchuleClassSensor(entry, coordinator),
+            BesteSchuleTimetableCardSensor(entry, coordinator),
             BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
             BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
             *[
@@ -340,6 +341,84 @@ def _student_class(data: dict[str, Any]) -> str | None:
     return None
 
 
+def _weekday_key(index: int) -> str:
+    """Return stundenplan-card weekday keys."""
+    return ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")[index]
+
+
+def _event_cell_text(event: Any) -> str:
+    """Return a compact stundenplan-card cell text for one lesson event."""
+    parts = [event.summary]
+    if event.description:
+        parts.extend(
+            line.strip()
+            for line in event.description.splitlines()
+            if line.strip()
+        )
+    return "\n".join(part for part in parts if part)
+
+
+def _timetable_card_rows(
+    coordinator: BesteSchuleDataUpdateCoordinator,
+) -> list[dict[str, Any]]:
+    """Return current-week rows compatible with fabel-smith/stundenplan-card."""
+    now = dt_util.now()
+    week_start = (now - timedelta(days=now.weekday())).replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    week_end = week_start + timedelta(days=7)
+    events = _cached_lesson_events(coordinator, week_start, week_end)
+    rows: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for event in events:
+        weekday = event.start.weekday()
+        if weekday > 4:
+            continue
+
+        start = event.start.strftime("%H:%M")
+        end = event.end.strftime("%H:%M")
+        key = (start, end)
+        row = rows.setdefault(
+            key,
+            {
+                "time": f"{start}-{end}",
+                "start": start,
+                "end": end,
+                "Mo": "",
+                "Di": "",
+                "Mi": "",
+                "Do": "",
+                "Fr": "",
+            },
+        )
+        day_key = _weekday_key(weekday)
+        cell = _event_cell_text(event)
+        row[day_key] = f"{row[day_key]}\n\n{cell}".strip() if row[day_key] else cell
+
+    return [
+        rows[key]
+        for key in sorted(rows)
+    ]
+
+
+def _timetable_card_days() -> list[str]:
+    """Return stundenplan-card day columns."""
+    return ["Mo", "Di", "Mi", "Do", "Fr"]
+
+
+def _timetable_card_meta_days() -> list[str]:
+    """Return current-week dates for stundenplan-card headers."""
+    now = dt_util.now()
+    week_start = now.date() - timedelta(days=now.weekday())
+    return [
+        (week_start + timedelta(days=offset)).strftime("%Y%m%d")
+        for offset in range(5)
+    ]
+
+
 class BesteSchuleClassSensor(
     CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
 ):
@@ -367,6 +446,51 @@ class BesteSchuleClassSensor(
     def native_value(self) -> str | None:
         """Return the student's main class."""
         return _student_class(self.coordinator.data)
+
+
+class BesteSchuleTimetableCardSensor(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
+):
+    """Expose timetable rows for fabel-smith/stundenplan-card."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:table-clock"
+    _attr_translation_key = "timetable_card"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_timetable_card"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of timetable rows."""
+        return len(_timetable_card_rows(self.coordinator))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return rows in formats consumed by stundenplan-card."""
+        rows = _timetable_card_rows(self.coordinator)
+        days = _timetable_card_days()
+        meta = {"days": _timetable_card_meta_days()}
+        return {
+            "rows_table": rows,
+            "rows_json": rows,
+            "plan": rows,
+            "days": days,
+            "meta": meta,
+            "meta_ha": meta,
+            "no_plan": not rows,
+        }
 
 
 class BesteSchuleSickDaysSensor(
