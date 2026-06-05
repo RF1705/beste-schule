@@ -108,6 +108,9 @@ class BesteSchuleApi:
 
         range_start = dt_util.now().date() - timedelta(days=7)
         range_end = dt_util.now().date() + timedelta(days=60)
+        homework_range_start = dt_util.now().date()
+        homework_range_end = dt_util.now().date() + timedelta(days=21)
+        student_id = _first_student_id(data.get("students"))
 
         routes = {
             "time_tables_current": ("time-tables/current", None),
@@ -151,6 +154,19 @@ class BesteSchuleApi:
             ),
             "finalgrades": ("finalgrades", None),
         }
+        if student_id is not None:
+            routes["journal_lessons"] = (
+                "journal/lessons",
+                {
+                    "include": "notes.type",
+                    "filter[student]": student_id,
+                    "filter[range]": (
+                        f"{homework_range_start.isoformat()},"
+                        f"{homework_range_end.isoformat()}"
+                    ),
+                    "per_page": 100,
+                },
+            )
 
         for key, route_info in routes.items():
             data[key] = await self._request_first_available(route_info)
@@ -179,3 +195,20 @@ class BesteSchuleApi:
             if last_error
             else "Unknown beste.schule API error"
         }
+
+
+def _first_student_id(students: Any) -> int | str | None:
+    """Return the first student id from a students API response."""
+    if isinstance(students, dict):
+        data = students.get("data")
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, dict) and item.get("id") is not None:
+                    return item["id"]
+        if isinstance(data, dict) and data.get("id") is not None:
+            return data["id"]
+    if isinstance(students, list):
+        for item in students:
+            if isinstance(item, dict) and item.get("id") is not None:
+                return item["id"]
+    return None

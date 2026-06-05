@@ -258,7 +258,7 @@ def _homework_debug(data: dict[str, Any]) -> dict[str, Any]:
             for item in value:
                 walk(item)
 
-    for key in ("journal_weeks", "journal_lesson_student"):
+    for key in ("journal_lessons", "journal_weeks", "journal_lesson_student"):
         walk(data.get(key))
 
     return {

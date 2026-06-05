@@ -636,7 +636,7 @@ def _homework_events(
     seen: set[str] = set()
     school_name = school_name_from_data(data)
 
-    for source_key in ("journal_weeks", "journal_lesson_student"):
+    for source_key in ("journal_lessons", "journal_weeks", "journal_lesson_student"):
         for item in _iter_values(data.get(source_key)):
             if not isinstance(item, dict):
                 continue
