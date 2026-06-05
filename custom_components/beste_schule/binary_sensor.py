@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util import dt as dt_util
-
-from .calendar import _absence_events, _lesson_events
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
+from .presence import current_lesson, is_at_school
 
 
 async def async_setup_entry(
@@ -54,37 +50,12 @@ class BesteSchuleAtSchoolBinarySensor(
     @property
     def is_on(self) -> bool:
         """Return whether a lesson is currently active and no absence covers today."""
-        now = dt_util.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        tomorrow_start = today_start + timedelta(days=1)
-        if _absence_events(self.coordinator.data, today_start, tomorrow_start):
-            return False
-
-        return any(
-            event.start <= now < event.end
-            for event in _lesson_events(
-                self.coordinator.data,
-                now - timedelta(minutes=1),
-                now + timedelta(minutes=1),
-            )
-        )
+        return is_at_school(self.coordinator.data)
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
         """Return current lesson details."""
-        now = dt_util.now()
-        current = next(
-            (
-                event
-                for event in _lesson_events(
-                    self.coordinator.data,
-                    now - timedelta(minutes=1),
-                    now + timedelta(minutes=1),
-                )
-                if event.start <= now < event.end
-            ),
-            None,
-        )
+        current = current_lesson(self.coordinator.data)
         return {
             "current_lesson": current.summary if current else None,
             "current_location": current.location if current else None,

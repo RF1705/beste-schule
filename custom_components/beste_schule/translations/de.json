@@ -53,6 +53,11 @@
       "at_school": {
         "name": "In der Schule"
       }
+    },
+    "device_tracker": {
+      "school_tracker": {
+        "name": "beste.schule Standort"
+      }
     }
   }
 }

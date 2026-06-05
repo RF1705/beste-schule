@@ -7,4 +7,4 @@ CONF_TOKEN = "token"
 CONF_SCHOOL_NAME = "school_name"
 DEFAULT_NAME = "beste.schule"
 
-PLATFORMS = ["sensor", "calendar", "binary_sensor"]
+PLATFORMS = ["sensor", "calendar", "binary_sensor", "device_tracker"]
