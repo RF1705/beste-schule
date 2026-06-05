@@ -145,7 +145,10 @@ class BesteSchuleApi:
                     "per_page": 100,
                 },
             ),
-            "grades": ("grades", None),
+            "grades": (
+                ("grades", {"include": "collection"}),
+                ("grades", None),
+            ),
             "finalgrades": ("finalgrades", None),
         }
 

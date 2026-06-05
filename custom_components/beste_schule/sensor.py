@@ -28,6 +28,7 @@ from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 
 CLASSWORK_MARKERS = (
+    "ka",
     "klassenarbeit",
     "klassenarbeiten",
     "arbeit",
@@ -124,26 +125,22 @@ def _parse_decimal(value: Any) -> float | None:
 
 def _api_average(data: dict[str, Any], subject: str) -> float | None:
     """Return an API-provided average for a subject, if available."""
-    for source in ("finalgrades", "grades"):
-        for item in _data_list(data.get(source)):
-            if not isinstance(item, dict) or _subject_name(item) != subject:
-                continue
-            for key in (
-                "value",
-                "value_int",
-                "value_calc",
-                "value_calc_int",
-                "average",
-                "avg",
-                "calculation",
-                "calculated",
-                "calculation_for",
-                "calculation_verbal",
-                "final_value",
-            ):
-                value = _parse_decimal(item.get(key))
-                if value is not None and 1 <= value <= 6:
-                    return value
+    for item in _data_list(data.get("finalgrades")):
+        if not isinstance(item, dict) or _subject_name(item) != subject:
+            continue
+        for key in (
+            "value_calc",
+            "value_calc_int",
+            "average",
+            "avg",
+            "calculation",
+            "calculated",
+            "calculation_verbal",
+            "final_value",
+        ):
+            value = _parse_decimal(item.get(key))
+            if value is not None and 1 <= value <= 6:
+                return value
     return None
 
 
@@ -155,6 +152,10 @@ def _grade_kind_text(grade: dict[str, Any]) -> str:
         "grade_type",
         "gradeType",
         "category",
+        "collection",
+        "local_id",
+        "localId",
+        "abbreviation",
         "calculation_for",
         "name",
         "title",
@@ -169,8 +170,8 @@ def _grade_kind_text(grade: dict[str, Any]) -> str:
 
 def _is_classwork(grade: dict[str, Any]) -> bool:
     """Return whether a grade should count as classwork."""
-    text = _grade_kind_text(grade)
-    return any(marker in text for marker in CLASSWORK_MARKERS)
+    words = set(re.findall(r"[a-zäöüß]+", _grade_kind_text(grade)))
+    return any(marker in words for marker in CLASSWORK_MARKERS)
 
 
 def _average(values: list[float]) -> float | None:
@@ -178,6 +179,16 @@ def _average(values: list[float]) -> float | None:
     if not values:
         return None
     return sum(values) / len(values)
+
+
+def _weighted_grade_average(
+    classwork_average: float | None,
+    other_average: float | None,
+) -> float | None:
+    """Return average with classwork weighted twice and other grades once."""
+    if classwork_average is not None and other_average is not None:
+        return ((classwork_average * 2) + other_average) / 3
+    return classwork_average or other_average
 
 
 def _school_round(value: float, classwork_average: float | None, other_average: float | None) -> int:
@@ -389,10 +400,7 @@ class BesteSchuleGradeAverageSensor(
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
 
-        if classwork_average is not None and other_average is not None:
-            calculated_average = (classwork_average + other_average) / 2
-        else:
-            calculated_average = classwork_average or other_average
+        calculated_average = _weighted_grade_average(classwork_average, other_average)
 
         if calculated_average is None:
             return None
@@ -406,10 +414,7 @@ class BesteSchuleGradeAverageSensor(
         classwork_values, other_values = self._grouped_values
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
-        if classwork_average is not None and other_average is not None:
-            calculated_average = (classwork_average + other_average) / 2
-        else:
-            calculated_average = classwork_average or other_average
+        calculated_average = _weighted_grade_average(classwork_average, other_average)
 
         return {
             "subject": self._subject,

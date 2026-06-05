@@ -21,6 +21,7 @@ from .sensor import (
     _school_round,
     _subject_grade_values,
     _subject_name,
+    _weighted_grade_average,
 )
 
 MAX_LIST_ITEMS = 3
@@ -123,10 +124,7 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
         classwork_values, other_values = _subject_grade_values(data, subject)
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
-        if classwork_average is not None and other_average is not None:
-            calculated_average = (classwork_average + other_average) / 2
-        else:
-            calculated_average = classwork_average or other_average
+        calculated_average = _weighted_grade_average(classwork_average, other_average)
 
         result[subject] = {
             "sensor_value": (
@@ -155,11 +153,13 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
                 if classwork_average is not None
                 else None
             ),
+            "classwork_weight": 2,
             "other_average": (
                 round(other_average, 2)
                 if other_average is not None
                 else None
             ),
+            "other_weight": 1,
             "grade_items": _grade_items_for_subject(data, subject),
             "finalgrade_items": _finalgrade_items_for_subject(data, subject),
         }
@@ -187,6 +187,7 @@ def _grade_items_for_subject(data: dict[str, Any], subject: str) -> list[dict[st
                 "kind_text": _grade_kind_text(item) or None,
                 "is_classwork": _is_classwork(item),
                 "keys": _keys(item),
+                "collection": _sample(item.get("collection")),
             }
         )
     return items
