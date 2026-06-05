@@ -16,7 +16,7 @@ from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 
-INTEGRATION_VERSION = "0.1.7"
+INTEGRATION_VERSION = "0.1.8"
 CLASSWORK_MARKERS = (
     "klassenarbeit",
     "klassenarbeiten",
@@ -176,6 +176,46 @@ def _parse_grade(value: Any) -> float | None:
     return float(match.group(1))
 
 
+def _parse_decimal(value: Any) -> float | None:
+    """Parse decimal values using comma or dot."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        for key in ("value", "average", "avg", "calculation"):
+            parsed = _parse_decimal(value.get(key))
+            if parsed is not None:
+                return parsed
+        return None
+    if not isinstance(value, str):
+        return None
+
+    match = re.search(r"\d+(?:[,.]\d+)?", value)
+    if not match:
+        return None
+    return float(match.group(0).replace(",", "."))
+
+
+def _api_average(data: dict[str, Any], subject: str) -> float | None:
+    """Return an API-provided average for a subject, if available."""
+    for source in ("finalgrades", "grades"):
+        for item in _data_list(data.get(source)):
+            if not isinstance(item, dict) or _subject_name(item) != subject:
+                continue
+            for key in (
+                "average",
+                "avg",
+                "calculation",
+                "calculated",
+                "calculation_for",
+                "calculation_verbal",
+                "final_value",
+            ):
+                value = _parse_decimal(item.get(key))
+                if value is not None and 1 <= value <= 6:
+                    return value
+    return None
+
+
 def _grade_kind_text(grade: dict[str, Any]) -> str:
     """Return searchable text describing the grade type."""
     values: list[str] = []
@@ -250,6 +290,12 @@ def _grade_subjects(data: dict[str, Any]) -> list[str]:
         subject = _subject_name(item)
         if subject:
             subjects.add(subject)
+    for item in _data_list(data.get("finalgrades")):
+        if not isinstance(item, dict):
+            continue
+        subject = _subject_name(item)
+        if subject and _api_average(data, subject) is not None:
+            subjects.add(subject)
     return sorted(subjects)
 
 
@@ -306,7 +352,7 @@ class BesteSchuleGradeAverageSensor(
         super().__init__(coordinator)
         self._entry = entry
         self._subject = subject
-        self._attr_name = f"{subject} Durchschnitt"
+        self._attr_name = f"Notendurchschnitt {subject}"
         self._attr_unique_id = f"{entry.entry_id}_grade_average_{_slug(subject)}"
 
     @property
@@ -317,6 +363,10 @@ class BesteSchuleGradeAverageSensor(
     @property
     def native_value(self) -> float | None:
         """Return the rounded subject grade."""
+        api_average = _api_average(self.coordinator.data, self._subject)
+        if api_average is not None:
+            return round(api_average, 2)
+
         classwork_values, other_values = self._grouped_values
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
@@ -334,6 +384,7 @@ class BesteSchuleGradeAverageSensor(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return details for the grade average."""
+        api_average = _api_average(self.coordinator.data, self._subject)
         classwork_values, other_values = self._grouped_values
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
@@ -344,6 +395,8 @@ class BesteSchuleGradeAverageSensor(
 
         return {
             "subject": self._subject,
+            "source": "api" if api_average is not None else "calculated",
+            "api_average": round(api_average, 2) if api_average is not None else None,
             "count": len(classwork_values) + len(other_values),
             "classwork_count": len(classwork_values),
             "other_count": len(other_values),

@@ -45,6 +45,11 @@
       "absences": {
         "name": "Abwesenheiten"
       }
+    },
+    "binary_sensor": {
+      "at_school": {
+        "name": "In der Schule"
+      }
     }
   }
 }
