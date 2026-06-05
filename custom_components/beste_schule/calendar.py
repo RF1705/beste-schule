@@ -233,10 +233,10 @@ def _parse_weekday(value: Any) -> int | None:
 
     if isinstance(value, (int, float)):
         weekday = int(value)
-        if 0 <= weekday <= 6:
-            return weekday
         if 1 <= weekday <= 7:
             return weekday - 1
+        if weekday == 0:
+            return 0
 
     return None
 
@@ -261,20 +261,29 @@ def _period_time_map(data: dict[str, Any]) -> dict[int, tuple[time, time]]:
         if not isinstance(times, list):
             continue
 
-        for period in times:
-            if not isinstance(period, dict):
+        default_times = [timeset for timeset in times if isinstance(timeset, dict) and timeset.get("default")]
+        for timeset in [*default_times, *times]:
+            if not isinstance(timeset, dict):
                 continue
 
-            number = _find_value(period, LESSON_NR_KEYS + ("lesson", "period"))
-            start_time = _parse_time(_find_value(period, START_KEYS))
-            end_time = _parse_time(_find_value(period, END_KEYS))
-            if number is None or start_time is None or end_time is None:
+            lessons = timeset.get("lessons")
+            if not isinstance(lessons, list):
                 continue
 
-            try:
-                period_map[int(number)] = (start_time, end_time)
-            except (TypeError, ValueError):
-                continue
+            for period in lessons:
+                if not isinstance(period, dict):
+                    continue
+
+                number = _find_value(period, LESSON_NR_KEYS + ("lesson", "period"))
+                start_time = _parse_time(_find_value(period, START_KEYS))
+                end_time = _parse_time(_find_value(period, END_KEYS))
+                if number is None or start_time is None or end_time is None:
+                    continue
+
+                try:
+                    period_map.setdefault(int(number), (start_time, end_time))
+                except (TypeError, ValueError):
+                    continue
 
     return period_map
 
@@ -340,7 +349,13 @@ def _lesson_events(
 
         location = _find_nested_text(item, ROOM_KEYS)
         teacher = _find_nested_text(item, TEACHER_KEYS)
-        description = teacher
+        school_name = _find_nested_text(data.get("school", {}), ("name",))
+        description_parts = []
+        if location:
+            description_parts.append(f"Raum: {location}")
+        if teacher:
+            description_parts.append(teacher)
+        description = "\n".join(description_parts) or None
 
         if lesson_date:
             lesson_dates = [lesson_date]
@@ -363,7 +378,7 @@ def _lesson_events(
                             summary=title,
                             start=event_start,
                             end=event_end,
-                            location=location,
+                            location=school_name or location,
                             description=description,
                         )
                     )
