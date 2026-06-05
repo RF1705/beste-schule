@@ -15,6 +15,8 @@ from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 
+INTEGRATION_VERSION = "0.1.1"
+
 TIMETABLE_KEYS = (
     "time_tables",
     "time_tables_current",
@@ -185,4 +187,5 @@ class BesteSchuleTimetableDiagnosticsSensor(
         }
         attributes["students_first_id"] = _first_id(self.coordinator.data.get("students"))
         attributes["school"] = _school_status(self.coordinator.data.get("school"))
+        attributes["integration_version"] = INTEGRATION_VERSION
         return attributes

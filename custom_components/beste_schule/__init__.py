@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .api import BesteSchuleApi
-from .const import CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
+from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import school_name_from_data
 
@@ -51,6 +51,12 @@ def _async_update_device_info(
     if not school_name:
         return
 
+    if entry.data.get(CONF_SCHOOL_NAME) != school_name:
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_SCHOOL_NAME: school_name},
+        )
+
     device_registry = dr.async_get(hass)
     device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
     if device is None:
@@ -59,5 +65,5 @@ def _async_update_device_info(
     device_registry.async_update_device(
         device.id,
         manufacturer=school_name,
-        model="beste.schule",
+        model=school_name,
     )

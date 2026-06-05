@@ -7,7 +7,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import CONF_SCHOOL_NAME, DOMAIN
 
 
 def _text(value: Any) -> str | None:
@@ -68,10 +68,11 @@ def school_name_from_data(data: Any) -> str | None:
 
 def besteschule_device_info(entry: ConfigEntry, data: dict[str, Any]) -> DeviceInfo:
     """Return Home Assistant device info for beste.schule entities."""
+    school_name = school_name_from_data(data) or entry.data.get(CONF_SCHOOL_NAME)
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        manufacturer=school_name_from_data(data) or "beste.schule",
-        model="beste.schule",
+        manufacturer=school_name or "beste.schule",
+        model=school_name or "beste.schule",
         name=entry.title,
         configuration_url="https://beste.schule",
     )
