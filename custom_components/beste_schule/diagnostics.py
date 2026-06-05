@@ -255,10 +255,13 @@ def _homework_debug(data: dict[str, Any]) -> dict[str, Any]:
                     if "hausauf" in text or "homework" in text:
                         homework_like_count += 1
                         note_id = note.get("id")
+                        description = " ".join(str(note.get("description") or "").split())
+                        note_type = note.get("type")
+                        type_name = note_type.get("name") if isinstance(note_type, dict) else None
                         homework_note_keys.add(
-                            f"id:{note_id}"
-                            if note_id is not None
-                            else f"text:{note.get('description')}"
+                            f"content:{type_name}|{description}"
+                            if description
+                            else f"id:{note_id}"
                         )
             for nested in value.values():
                 walk(nested)

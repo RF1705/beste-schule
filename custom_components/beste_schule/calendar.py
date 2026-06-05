@@ -732,9 +732,10 @@ def _homework_event_key(
 ) -> str:
     """Build a stable duplicate-detection key for homework notes."""
     note_id = note.get("id")
-    if note_id is not None:
-        return f"note:{note_id}"
-    return f"{note_date.isoformat()}|{title}|{description or ''}"
+    description_key = " ".join((description or "").split())
+    if description_key or title:
+        return f"content:{note_date.isoformat()}|{title}|{description_key}"
+    return f"note:{note_id}" if note_id is not None else f"date:{note_date.isoformat()}"
 
 
 def _note_date(item: dict[str, Any]) -> date | None:
