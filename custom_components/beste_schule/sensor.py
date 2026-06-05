@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
+from .entity import besteschule_device_info
 
 TIMETABLE_KEYS = (
     "time_tables",
@@ -52,6 +53,9 @@ def _count_items(value: Any) -> int | None:
     if isinstance(value, dict):
         if isinstance(value.get("data"), list):
             return len(value["data"])
+        for key in ("lessons", "times", "days", "weeks", "items"):
+            if isinstance(value.get(key), list):
+                return len(value[key])
         if "error" in value:
             return None
     return None
@@ -68,6 +72,10 @@ def _response_status(value: Any) -> str:
 
     if value is None:
         return "missing"
+
+    if isinstance(value, dict):
+        keys = ", ".join(sorted(str(key) for key in value.keys())[:8])
+        return f"dict: {keys}" if keys else "dict"
 
     return type(value).__name__
 
@@ -88,13 +96,13 @@ class BesteSchuleCountSensor(
         super().__init__(coordinator)
         self._attr_translation_key = data_key
         self._attr_unique_id = f"{entry.entry_id}_{data_key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            manufacturer="beste.schule",
-            name=entry.title,
-            configuration_url="https://beste.schule",
-        )
+        self._entry = entry
         self._data_key = data_key
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
 
     @property
     def native_value(self) -> int | None:
@@ -117,12 +125,12 @@ class BesteSchuleTimetableDiagnosticsSensor(
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_timetable_data"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            manufacturer="beste.schule",
-            name=entry.title,
-            configuration_url="https://beste.schule",
-        )
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
 
     @property
     def native_value(self) -> int:

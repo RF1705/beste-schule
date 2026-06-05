@@ -105,6 +105,7 @@ class BesteSchuleApi:
         """Fetch the first read-only routes we want to explore."""
         routes = {
             "me": ("user-management/me", None),
+            "school": ("school", None),
             "time_tables": (
                 "time-tables",
                 {
