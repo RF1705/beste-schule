@@ -706,7 +706,7 @@ def _homework_events(
                 if event_end <= start_date.date() or event_start >= end_date.date():
                     continue
 
-                key = f"{note_date.isoformat()}|{note.get('id')}|{title}|{description or ''}"
+                key = _homework_event_key(note, note_date, title, description)
                 if key in seen:
                     continue
                 seen.add(key)
@@ -722,6 +722,19 @@ def _homework_events(
 
     events.sort(key=lambda event: event.start)
     return events
+
+
+def _homework_event_key(
+    note: dict[str, Any],
+    note_date: date,
+    title: str,
+    description: str | None,
+) -> str:
+    """Build a stable duplicate-detection key for homework notes."""
+    note_id = note.get("id")
+    if note_id is not None:
+        return f"note:{note_id}"
+    return f"{note_date.isoformat()}|{title}|{description or ''}"
 
 
 def _note_date(item: dict[str, Any]) -> date | None:

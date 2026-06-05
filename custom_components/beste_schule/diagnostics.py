@@ -233,6 +233,7 @@ def _homework_debug(data: dict[str, Any]) -> dict[str, Any]:
     homework_like_count = 0
     missing_homework_count = 0
     note_type_names: set[str] = set()
+    homework_note_keys: set[str] = set()
 
     def walk(value: Any) -> None:
         nonlocal note_count, homework_like_count, missing_homework_count
@@ -253,6 +254,12 @@ def _homework_debug(data: dict[str, Any]) -> dict[str, Any]:
                     text = str(note).lower()
                     if "hausauf" in text or "homework" in text:
                         homework_like_count += 1
+                        note_id = note.get("id")
+                        homework_note_keys.add(
+                            f"id:{note_id}"
+                            if note_id is not None
+                            else f"text:{note.get('description')}"
+                        )
             for nested in value.values():
                 walk(nested)
         elif isinstance(value, list):
@@ -265,6 +272,7 @@ def _homework_debug(data: dict[str, Any]) -> dict[str, Any]:
     return {
         "note_count": note_count,
         "homework_like_note_count": homework_like_count,
+        "unique_homework_like_note_count": len(homework_note_keys),
         "missing_homework_count": missing_homework_count,
         "note_type_names": sorted(note_type_names),
     }
