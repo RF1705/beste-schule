@@ -76,11 +76,11 @@ The integration currently creates:
 - `sensor`: timetable card beta data
 - `sensor`: grade average per subject
 
-### stundenplan-card beta
+### stundenplan-card compatibility
 
-Version `0.3.0b3` adds a beta sensor for [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card).
+The beta releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through its **Beliebiger Sensor (JSON)** source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
 
-Use the `Timetable card` sensor as a **Beliebiger Sensor (JSON)** source in the card:
+Use the `Timetable card` sensor from this integration in the card:
 
 ```yaml
 type: custom:stundenplan-card
