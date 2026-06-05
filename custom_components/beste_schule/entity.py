@@ -45,6 +45,10 @@ def school_name_from_data(data: Any) -> str | None:
     if not isinstance(data, dict):
         return None
 
+    name = _name_from_dict(data)
+    if name:
+        return name
+
     for key in ("school", "currentSchool", "current_school"):
         value = data.get(key)
         if isinstance(value, dict):

@@ -81,6 +81,7 @@ END_KEYS = (
     "to",
     "until",
 )
+LESSON_NR_KEYS = ("nr", "number", "lessonNr", "lesson_nr", "lessonNumber")
 TITLE_KEYS = (
     "subject",
     "subjects",
@@ -258,6 +259,32 @@ def _parse_time(value: Any) -> time | None:
     return None
 
 
+def _period_time_map(data: dict[str, Any]) -> dict[int, tuple[time, time]]:
+    """Build a lesson-number to start/end time map from school timetable times."""
+    period_map: dict[int, tuple[time, time]] = {}
+    for item in _iter_values(data.get("school")):
+        times = item.get("times") if isinstance(item, dict) else None
+        if not isinstance(times, list):
+            continue
+
+        for period in times:
+            if not isinstance(period, dict):
+                continue
+
+            number = _find_value(period, LESSON_NR_KEYS)
+            start_time = _parse_time(_find_value(period, START_KEYS))
+            end_time = _parse_time(_find_value(period, END_KEYS))
+            if number is None or start_time is None or end_time is None:
+                continue
+
+            try:
+                period_map[int(number)] = (start_time, end_time)
+            except (TypeError, ValueError):
+                continue
+
+    return period_map
+
+
 def _parse_date(value: Any) -> date | None:
     """Parse a date value from common API formats."""
     if isinstance(value, str):
@@ -340,6 +367,7 @@ def _lesson_events(
     """Convert timetable-like API data into HA calendar events."""
     events: list[CalendarEvent] = []
     seen: set[str] = set()
+    period_map = _period_time_map(data)
     source_data = {
         key: value
         for key, value in data.items()
@@ -356,6 +384,12 @@ def _lesson_events(
         weekday = _parse_weekday(_find_value(item, WEEKDAY_KEYS))
         start_time = _parse_time(_find_value(item, START_KEYS))
         end_time = _parse_time(_find_value(item, END_KEYS))
+        if start_time is None or end_time is None:
+            number = _find_value(item, LESSON_NR_KEYS)
+            try:
+                start_time, end_time = period_map[int(number)]
+            except (KeyError, TypeError, ValueError):
+                pass
         if (lesson_date is None and weekday is None) or start_time is None or end_time is None:
             continue
 
