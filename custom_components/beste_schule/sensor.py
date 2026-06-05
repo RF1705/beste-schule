@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 import re
 from typing import Any
 
@@ -17,7 +16,15 @@ from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 
-INTEGRATION_VERSION = "0.1.6"
+INTEGRATION_VERSION = "0.1.7"
+CLASSWORK_MARKERS = (
+    "klassenarbeit",
+    "klassenarbeiten",
+    "arbeit",
+    "testat",
+    "schulaufgabe",
+    "klausur",
+)
 
 TIMETABLE_KEYS = (
     "time_tables",
@@ -150,7 +157,7 @@ def _subject_name(grade: dict[str, Any]) -> str | None:
 
 
 def _parse_grade(value: Any) -> float | None:
-    """Parse a German numeric school grade."""
+    """Parse a German numeric school grade, ignoring plus/minus modifiers."""
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, dict):
@@ -166,13 +173,72 @@ def _parse_grade(value: Any) -> float | None:
     if not match:
         return None
 
-    grade = float(match.group(1))
-    modifier = match.group(2)
-    if modifier == "+":
-        grade -= 0.25
-    elif modifier == "-":
-        grade += 0.25
-    return grade
+    return float(match.group(1))
+
+
+def _grade_kind_text(grade: dict[str, Any]) -> str:
+    """Return searchable text describing the grade type."""
+    values: list[str] = []
+    for key in (
+        "type",
+        "grade_type",
+        "gradeType",
+        "category",
+        "calculation_for",
+        "name",
+        "title",
+        "comment",
+        "description",
+    ):
+        text = _text_value(grade.get(key))
+        if text:
+            values.append(text)
+    return " ".join(values).lower()
+
+
+def _is_classwork(grade: dict[str, Any]) -> bool:
+    """Return whether a grade should count as classwork."""
+    text = _grade_kind_text(grade)
+    return any(marker in text for marker in CLASSWORK_MARKERS)
+
+
+def _average(values: list[float]) -> float | None:
+    """Return the average of values."""
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _school_round(value: float, classwork_average: float | None, other_average: float | None) -> int:
+    """Round a school grade, resolving .5 towards the classwork average."""
+    lower = int(value)
+    fraction = value - lower
+    if abs(fraction - 0.5) < 0.00001 and classwork_average is not None and other_average is not None:
+        if classwork_average < other_average:
+            return lower
+        if classwork_average > other_average:
+            return lower + 1
+    return int(value + 0.5)
+
+
+def _subject_grade_values(
+    data: dict[str, Any],
+    subject: str,
+) -> tuple[list[float], list[float]]:
+    """Return classwork and other grade values for one subject."""
+    classwork_values: list[float] = []
+    other_values: list[float] = []
+    for item in _data_list(data.get("grades")):
+        if not isinstance(item, dict) or _subject_name(item) != subject:
+            continue
+        value = _parse_grade(item.get("value"))
+        if value is None:
+            continue
+        if _is_classwork(item):
+            classwork_values.append(value)
+        else:
+            other_values.append(value)
+    return classwork_values, other_values
 
 
 def _grade_subjects(data: dict[str, Any]) -> list[str]:
@@ -250,33 +316,48 @@ class BesteSchuleGradeAverageSensor(
 
     @property
     def native_value(self) -> float | None:
-        """Return the grade average."""
-        values = self._values
-        if not values:
+        """Return the rounded subject grade."""
+        classwork_values, other_values = self._grouped_values
+        classwork_average = _average(classwork_values)
+        other_average = _average(other_values)
+
+        if classwork_average is not None and other_average is not None:
+            calculated_average = (classwork_average + other_average) / 2
+        else:
+            calculated_average = classwork_average or other_average
+
+        if calculated_average is None:
             return None
-        return round(sum(values) / len(values), 2)
+
+        return _school_round(calculated_average, classwork_average, other_average)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return details for the grade average."""
-        values = self._values
+        classwork_values, other_values = self._grouped_values
+        classwork_average = _average(classwork_values)
+        other_average = _average(other_values)
+        if classwork_average is not None and other_average is not None:
+            calculated_average = (classwork_average + other_average) / 2
+        else:
+            calculated_average = classwork_average or other_average
+
         return {
             "subject": self._subject,
-            "count": len(values),
-            "grades": values,
+            "count": len(classwork_values) + len(other_values),
+            "classwork_count": len(classwork_values),
+            "other_count": len(other_values),
+            "classwork_average": round(classwork_average, 2) if classwork_average is not None else None,
+            "other_average": round(other_average, 2) if other_average is not None else None,
+            "calculated_average": round(calculated_average, 2) if calculated_average is not None else None,
+            "classwork_grades": classwork_values,
+            "other_grades": other_values,
         }
 
     @property
-    def _values(self) -> list[float]:
-        """Return all parseable grades for the subject."""
-        values: list[float] = []
-        for item in _data_list(self.coordinator.data.get("grades")):
-            if not isinstance(item, dict) or _subject_name(item) != self._subject:
-                continue
-            value = _parse_grade(item.get("value"))
-            if value is not None:
-                values.append(value)
-        return values
+    def _grouped_values(self) -> tuple[list[float], list[float]]:
+        """Return all parseable grades grouped by type."""
+        return _subject_grade_values(self.coordinator.data, self._subject)
 
 
 class BesteSchuleTimetableDiagnosticsSensor(

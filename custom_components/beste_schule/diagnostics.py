@@ -90,6 +90,7 @@ async def async_get_config_entry_diagnostics(
             if key in {"school", "students"}
             or key.startswith("time_")
             or key.startswith("journal_")
+            or key == "grades"
         },
     }
 
