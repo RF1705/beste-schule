@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
 
 class BesteSchuleApiError(Exception):
@@ -103,9 +105,23 @@ class BesteSchuleApi:
 
     async def fetch_overview(self) -> dict[str, Any]:
         """Fetch the first read-only routes we want to explore."""
-        routes = {
+        data: dict[str, Any] = {}
+
+        for key, (route, params) in {
             "me": ("user-management/me", None),
             "school": ("school", None),
+            "students": ("students", None),
+        }.items():
+            try:
+                data[key] = await self.request(route, params=params)
+            except BesteSchuleApiError as err:
+                data[key] = {"error": str(err)}
+
+        student_id = _student_id_from_data(data.get("students"))
+        range_start = dt_util.now().date() - timedelta(days=7)
+        range_end = dt_util.now().date() + timedelta(days=60)
+
+        routes = {
             "time_tables": (
                 "time-tables",
                 {
@@ -144,11 +160,47 @@ class BesteSchuleApi:
             "grades": ("grades", None),
             "finalgrades": ("finalgrades", None),
         }
+        if student_id is not None:
+            routes["journal_lessons_student"] = (
+                "journal/lessons",
+                {
+                    "include": "day,subject,teachers,group,notes.type",
+                    "filter[student]": student_id,
+                    "filter[range]": f"{range_start.isoformat()},{range_end.isoformat()}",
+                },
+            )
 
-        data: dict[str, Any] = {}
         for key, (route, params) in routes.items():
             try:
                 data[key] = await self.request(route, params=params)
             except BesteSchuleApiError as err:
                 data[key] = {"error": str(err)}
         return data
+
+
+def _student_id_from_data(data: Any) -> int | str | None:
+    """Extract the first student id from common API response shapes."""
+    if isinstance(data, dict) and isinstance(data.get("data"), list):
+        return _student_id_from_data(data["data"])
+
+    if isinstance(data, list):
+        for item in data:
+            student_id = _student_id_from_data(item)
+            if student_id is not None:
+                return student_id
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    for key in ("id", "student_id", "studentId"):
+        value = data.get(key)
+        if isinstance(value, (int, str)) and str(value).strip():
+            return value
+
+    for key in ("student", "child", "pupil"):
+        student_id = _student_id_from_data(data.get(key))
+        if student_id is not None:
+            return student_id
+
+    return None

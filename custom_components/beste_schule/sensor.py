@@ -25,6 +25,7 @@ TIMETABLE_KEYS = (
     "journal_days",
     "journal_weeks",
     "journal_lessons",
+    "journal_lessons_student",
 )
 
 

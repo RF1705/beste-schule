@@ -103,6 +103,7 @@ TIMETABLE_SOURCE_KEYS = (
     "journal_days",
     "journal_weeks",
     "journal_lessons",
+    "journal_lessons_student",
 )
 
 
@@ -278,6 +279,57 @@ def _event_key(day: date, start: time, end: time, title: str, location: str | No
     return f"{day.isoformat()}|{start.isoformat()}|{end.isoformat()}|{title}|{location or ''}"
 
 
+def _note_events(
+    item: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+    seen: set[str],
+) -> list[CalendarEvent]:
+    """Convert journal lesson notes into all-day calendar events."""
+    lesson_date = _parse_date(_find_value(item, DATE_KEYS))
+    if lesson_date is None:
+        return []
+
+    event_start = lesson_date
+    event_end = lesson_date + timedelta(days=1)
+    if event_end <= start_date.date() or event_start >= end_date.date():
+        return []
+
+    notes = item.get("notes")
+    if isinstance(notes, dict):
+        notes = [notes]
+    if not isinstance(notes, list):
+        return []
+
+    subject = _find_nested_text(item, TITLE_KEYS)
+    events: list[CalendarEvent] = []
+    for note in notes:
+        if not isinstance(note, dict):
+            continue
+
+        description = _extract_text(note.get("description"))
+        if not description:
+            continue
+
+        note_type = _find_nested_text(note, ("type", "typeName", "type_name", "name"))
+        summary_parts = [part for part in (subject, note_type) if part]
+        summary = " - ".join(summary_parts) if summary_parts else description
+        key = f"{lesson_date.isoformat()}|note|{summary}|{description}"
+        if key in seen:
+            continue
+
+        seen.add(key)
+        events.append(
+            CalendarEvent(
+                summary=summary,
+                start=event_start,
+                end=event_end,
+                description=description,
+            )
+        )
+    return events
+
+
 def _lesson_events(
     data: dict[str, Any],
     start_date: datetime,
@@ -295,6 +347,8 @@ def _lesson_events(
     for item in _iter_values(source_data):
         if not isinstance(item, dict):
             continue
+
+        events.extend(_note_events(item, start_date, end_date, seen))
 
         lesson_date = _parse_date(_find_value(item, DATE_KEYS))
         weekday = _parse_weekday(_find_value(item, WEEKDAY_KEYS))
