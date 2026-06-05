@@ -33,11 +33,11 @@ def _name_from_dict(value: dict[str, Any]) -> str | None:
     return None
 
 
-def _school_name_from_data(data: Any) -> str | None:
+def school_name_from_data(data: Any) -> str | None:
     """Find a school name in common beste.schule response shapes."""
     if isinstance(data, list):
         for item in data:
-            name = _school_name_from_data(item)
+            name = school_name_from_data(item)
             if name:
                 return name
         return None
@@ -51,12 +51,15 @@ def _school_name_from_data(data: Any) -> str | None:
             name = _name_from_dict(value)
             if name:
                 return name
+            name = school_name_from_data(value)
+            if name:
+                return name
         name = _text(value)
         if name:
             return name
 
     for key in ("me", "user", "profile", "student", "child", "data"):
-        name = _school_name_from_data(data.get(key))
+        name = school_name_from_data(data.get(key))
         if name:
             return name
 
@@ -67,7 +70,7 @@ def besteschule_device_info(entry: ConfigEntry, data: dict[str, Any]) -> DeviceI
     """Return Home Assistant device info for beste.schule entities."""
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        manufacturer=_school_name_from_data(data) or "beste.schule",
+        manufacturer=school_name_from_data(data) or "beste.schule",
         model="beste.schule",
         name=entry.title,
         configuration_url="https://beste.schule",

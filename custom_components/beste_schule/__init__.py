@@ -5,10 +5,12 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from .api import BesteSchuleApi
 from .const import CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
 from .coordinator import BesteSchuleDataUpdateCoordinator
+from .entity import school_name_from_data
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -25,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(
         entry, [Platform(platform) for platform in PLATFORMS]
     )
+    _async_update_device_info(hass, entry, coordinator)
     return True
 
 
@@ -36,3 +39,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
+
+
+def _async_update_device_info(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: BesteSchuleDataUpdateCoordinator,
+) -> None:
+    """Update existing device registry data after the first API refresh."""
+    school_name = school_name_from_data(coordinator.data)
+    if not school_name:
+        return
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    if device is None:
+        return
+
+    device_registry.async_update_device(
+        device.id,
+        manufacturer=school_name,
+        model="beste.schule",
+    )
