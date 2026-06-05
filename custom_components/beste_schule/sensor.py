@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -21,10 +22,10 @@ async def async_setup_entry(
     coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [
-            BesteSchuleCountSensor(coordinator, "Announcements", "announcements"),
-            BesteSchuleCountSensor(coordinator, "Checklists", "checklists"),
-            BesteSchuleCountSensor(coordinator, "Grades", "grades"),
-            BesteSchuleCountSensor(coordinator, "Final grades", "finalgrades"),
+            BesteSchuleCountSensor(entry, coordinator, "Announcements", "announcements"),
+            BesteSchuleCountSensor(entry, coordinator, "Checklists", "checklists"),
+            BesteSchuleCountSensor(entry, coordinator, "Grades", "grades"),
+            BesteSchuleCountSensor(entry, coordinator, "Final grades", "finalgrades"),
         ]
     )
 
@@ -38,14 +39,21 @@ class BesteSchuleCountSensor(
 
     def __init__(
         self,
+        entry: ConfigEntry,
         coordinator: BesteSchuleDataUpdateCoordinator,
         name: str,
         data_key: str,
     ) -> None:
         super().__init__(coordinator)
         self._attr_translation_key = data_key
-        self._attr_unique_id = f"beste_schule_{data_key}"
+        self._attr_unique_id = f"{entry.entry_id}_{data_key}"
         self._attr_name = name
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            manufacturer="beste.schule",
+            name=entry.title,
+            configuration_url="https://beste.schule",
+        )
         self._data_key = data_key
 
     @property

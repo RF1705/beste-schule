@@ -3,14 +3,12 @@
     "step": {
       "user": {
         "title": "beste.schule einrichten",
-        "description": "Du brauchst einen Personal Access Token aus deinem beste.schule-Benutzerkonto.\n\nSo bekommst du ihn:\n1. Bei beste.schule anmelden.\n2. Oben rechts den eigenen Namen anklicken und das Benutzerkonto öffnen.\n3. Links den Reiter API auswählen.\n4. Unten bei Personal Access Token einen neuen Token erstellen.\n5. Den Token kopieren und hier einfügen.\n\nDer Token wird nur lokal in Home Assistant gespeichert. Teile ihn nicht im Chat oder in Issues, weil er wie ein Passwort funktioniert.",
+        "description": "Du brauchst einen Personal Access Token aus deinem beste.schule-Benutzerkonto.\n\nSo bekommst du ihn:\n1. Bei beste.schule anmelden.\n2. Oben rechts den eigenen Namen anklicken und das Benutzerkonto öffnen.\n3. Links den Reiter API auswählen.\n4. Unten bei Personal Access Token einen neuen Token erstellen.\n5. Den Token kopieren und hier einfügen.",
         "data": {
-          "token": "Personal Access Token",
-          "api_url": "API-URL"
+          "token": "Personal Access Token"
         },
         "data_description": {
-          "token": "Der Token aus dem Bereich API im beste.schule-Benutzerkonto.",
-          "api_url": "Normalerweise unverändert lassen."
+          "token": "Der Token aus dem Bereich API im beste.schule-Benutzerkonto."
         }
       }
     },

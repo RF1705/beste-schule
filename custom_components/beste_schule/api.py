@@ -59,10 +59,13 @@ class BesteSchuleApi:
             "user-management/me",
             "me",
             "users/me",
-            "status",
-            "years",
             "students",
+            "children",
+            "pupils",
+            "persons",
             "groups",
+            "years",
+            "status",
         )
         last_error: BesteSchuleApiError | None = None
         saw_auth_error = False
@@ -79,6 +82,24 @@ class BesteSchuleApi:
         if saw_auth_error:
             raise BesteSchuleAuthError("beste.schule rejected the token") from last_error
         raise BesteSchuleApiError("Could not validate the beste.schule token") from last_error
+
+    async def fetch_suggested_name_data(self) -> Any:
+        """Fetch optional profile data for a useful Home Assistant device name."""
+        routes = (
+            "students",
+            "children",
+            "pupils",
+            "user-management/me",
+            "me",
+            "users/me",
+        )
+
+        for route in routes:
+            try:
+                return await self.request(route)
+            except BesteSchuleApiError:
+                continue
+        return None
 
     async def fetch_overview(self) -> dict[str, Any]:
         """Fetch the first read-only routes we want to explore."""

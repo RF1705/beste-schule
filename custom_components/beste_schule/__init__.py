@@ -7,7 +7,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .api import BesteSchuleApi
-from .const import CONF_API_URL, CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
+from .const import CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
 from .coordinator import BesteSchuleDataUpdateCoordinator
 
 
@@ -15,7 +15,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up beste.schule from a config entry."""
     api = BesteSchuleApi(
         hass,
-        entry.data.get(CONF_API_URL, DEFAULT_API_URL),
+        DEFAULT_API_URL,
         entry.data[CONF_TOKEN],
     )
     coordinator = BesteSchuleDataUpdateCoordinator(hass, api)

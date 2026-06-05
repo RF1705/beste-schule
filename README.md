@@ -20,5 +20,3 @@ integration in Home Assistant and paste the token there.
 3. Links den Reiter API auswählen.
 4. Unten bei Personal Access Token einen neuen Token erstellen.
 5. Den Token kopieren und in Home Assistant bei der Integration einfügen.
-
-Der Token funktioniert wie ein Passwort und sollte nicht geteilt werden.
