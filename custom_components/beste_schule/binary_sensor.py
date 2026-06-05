@@ -15,7 +15,12 @@ from homeassistant.util import dt as dt_util
 from .calendar import _absence_events, _lesson_events
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
-from .entity import besteschule_device_info
+from .entity import (
+    besteschule_device_info,
+    school_address_from_data,
+    school_coordinates_from_data,
+    school_name_from_data,
+)
 
 
 async def async_setup_entry(
@@ -85,9 +90,16 @@ class BesteSchuleAtSchoolBinarySensor(
             ),
             None,
         )
-        return {
+        attributes: dict[str, str | float | None] = {
             "current_lesson": current.summary if current else None,
             "current_location": current.location if current else None,
             "current_start": current.start.isoformat() if current else None,
             "current_end": current.end.isoformat() if current else None,
+            "school": school_name_from_data(self.coordinator.data),
+            "school_address": school_address_from_data(self.coordinator.data),
         }
+        coordinates = school_coordinates_from_data(self.coordinator.data)
+        if coordinates:
+            attributes["latitude"] = coordinates[0]
+            attributes["longitude"] = coordinates[1]
+        return attributes

@@ -17,7 +17,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
-from .entity import besteschule_device_info
+from .entity import besteschule_device_info, school_name_from_data
 
 WEEKDAY_NAMES = {
     "monday": 0,
@@ -311,6 +311,43 @@ def _event_key(day: date, start: time, end: time, title: str, location: str | No
     return f"{day.isoformat()}|{start.isoformat()}|{end.isoformat()}|{title}|{location or ''}"
 
 
+def _all_text(value: Any) -> str:
+    """Return searchable text for nested values."""
+    if isinstance(value, (str, int, float)):
+        return str(value)
+    if isinstance(value, dict):
+        return " ".join(_all_text(item) for item in value.values())
+    if isinstance(value, list):
+        return " ".join(_all_text(item) for item in value)
+    return ""
+
+
+def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], str]:
+    """Return cancellation/substitution markers keyed by date and lesson number."""
+    overlay: dict[tuple[date, int], str] = {}
+    source = data.get("substitution_days")
+    for item in _iter_values(source):
+        if not isinstance(item, dict):
+            continue
+
+        day = _parse_date(_find_value(item, DATE_KEYS))
+        number = _find_value(item, LESSON_NR_KEYS)
+        if day is None or number is None:
+            continue
+
+        text = _all_text(item).lower()
+        try:
+            key = (day, int(number))
+        except (TypeError, ValueError):
+            continue
+
+        if any(marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel")):
+            overlay[key] = "cancelled"
+        elif any(marker in text for marker in ("vertret", "ersatz", "substitution")):
+            overlay.setdefault(key, "substitution")
+    return overlay
+
+
 def _lesson_events(
     data: dict[str, Any],
     start_date: datetime,
@@ -320,6 +357,7 @@ def _lesson_events(
     events: list[CalendarEvent] = []
     seen: set[str] = set()
     period_map = _period_time_map(data)
+    overlay = _substitution_overlay(data)
     source_data = {
         key: value
         for key, value in data.items()
@@ -347,9 +385,10 @@ def _lesson_events(
         if not title:
             continue
 
+        number = _find_value(item, LESSON_NR_KEYS)
         location = _find_nested_text(item, ROOM_KEYS)
         teacher = _find_nested_text(item, TEACHER_KEYS)
-        school_name = _find_nested_text(data.get("school", {}), ("name",))
+        school_name = school_name_from_data(data)
         description_parts = []
         if location:
             description_parts.append(f"Raum: {location}")
@@ -367,19 +406,32 @@ def _lesson_events(
                 current_day += timedelta(days=7)
 
         for current_day in lesson_dates:
+            try:
+                overlay_value = overlay.get((current_day, int(number)))
+            except (TypeError, ValueError):
+                overlay_value = None
+            if overlay_value == "cancelled":
+                continue
+
             event_start = datetime.combine(current_day, start_time, start_date.tzinfo)
             event_end = datetime.combine(current_day, end_time, start_date.tzinfo)
             if event_end > start_date and event_start < end_date:
                 key = _event_key(current_day, start_time, end_time, title, location)
                 if key not in seen:
                     seen.add(key)
+                    summary = f"{title} (Vertretung)" if overlay_value == "substitution" else title
+                    event_description = description
+                    if overlay_value == "substitution":
+                        event_description = "\n".join(
+                            part for part in (description, "Vertretung") if part
+                        )
                     events.append(
                         CalendarEvent(
-                            summary=title,
+                            summary=summary,
                             start=event_start,
                             end=event_end,
                             location=school_name or location,
-                            description=description,
+                            description=event_description,
                         )
                     )
 

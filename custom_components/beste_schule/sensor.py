@@ -16,7 +16,7 @@ from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 
-INTEGRATION_VERSION = "0.1.8"
+INTEGRATION_VERSION = "0.1.9"
 CLASSWORK_MARKERS = (
     "klassenarbeit",
     "klassenarbeiten",

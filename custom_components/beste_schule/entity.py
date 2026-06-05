@@ -9,6 +9,10 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import CONF_SCHOOL_NAME, DOMAIN
 
+KNOWN_SCHOOL_COORDINATES = {
+    1008: (51.091054, 13.711921),
+}
+
 
 def _text(value: Any) -> str | None:
     """Return a stripped string value."""
@@ -67,6 +71,53 @@ def school_name_from_data(data: Any) -> str | None:
         if name:
             return name
 
+    return None
+
+
+def school_address_from_data(data: Any) -> str | None:
+    """Find a school address in common beste.schule response shapes."""
+    school = _school_data(data)
+    if not isinstance(school, dict):
+        return None
+
+    street = _text(school.get("street"))
+    street_nr = _text(school.get("street_nr"))
+    postal_code = _text(school.get("postal_code"))
+    city = _text(school.get("city"))
+
+    street_line = " ".join(part for part in (street, street_nr) if part)
+    city_line = " ".join(part for part in (postal_code, city) if part)
+    return ", ".join(part for part in (street_line, city_line) if part) or None
+
+
+def school_coordinates_from_data(data: Any) -> tuple[float, float] | None:
+    """Find school coordinates from API data or known public school metadata."""
+    school = _school_data(data)
+    if not isinstance(school, dict):
+        return None
+
+    latitude = school.get("latitude") or school.get("lat")
+    longitude = school.get("longitude") or school.get("lon") or school.get("lng")
+    if isinstance(latitude, (int, float)) and isinstance(longitude, (int, float)):
+        return float(latitude), float(longitude)
+
+    school_id = school.get("id")
+    if isinstance(school_id, int) and school_id in KNOWN_SCHOOL_COORDINATES:
+        return KNOWN_SCHOOL_COORDINATES[school_id]
+
+    return None
+
+
+def _school_data(data: Any) -> dict[str, Any] | None:
+    """Return the nested school data dict if present."""
+    if not isinstance(data, dict):
+        return None
+
+    school = data.get("school", data)
+    if isinstance(school, dict) and isinstance(school.get("data"), dict):
+        return school["data"]
+    if isinstance(school, dict):
+        return school
     return None
 
 
