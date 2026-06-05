@@ -129,6 +129,10 @@ def _api_average(data: dict[str, Any], subject: str) -> float | None:
             if not isinstance(item, dict) or _subject_name(item) != subject:
                 continue
             for key in (
+                "value",
+                "value_int",
+                "value_calc",
+                "value_calc_int",
                 "average",
                 "avg",
                 "calculation",

@@ -10,6 +10,18 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DOMAIN
 from .entity import school_name_from_data
+from .sensor import (
+    _api_average,
+    _average,
+    _data_list,
+    _grade_kind_text,
+    _grade_subjects,
+    _is_classwork,
+    _parse_grade,
+    _school_round,
+    _subject_grade_values,
+    _subject_name,
+)
 
 MAX_LIST_ITEMS = 3
 MAX_DEPTH = 7
@@ -98,6 +110,160 @@ async def async_get_config_entry_diagnostics(
             or key == "grades"
             or key == "finalgrades"
         },
+        "grade_debug": _grade_debug(data),
+        "homework_debug": _homework_debug(data),
+    }
+
+
+def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
+    """Return compact grade calculation diagnostics grouped by subject."""
+    result: dict[str, Any] = {}
+    for subject in _grade_subjects(data):
+        api_average = _api_average(data, subject)
+        classwork_values, other_values = _subject_grade_values(data, subject)
+        classwork_average = _average(classwork_values)
+        other_average = _average(other_values)
+        if classwork_average is not None and other_average is not None:
+            calculated_average = (classwork_average + other_average) / 2
+        else:
+            calculated_average = classwork_average or other_average
+
+        result[subject] = {
+            "sensor_value": (
+                round(api_average, 2)
+                if api_average is not None
+                else round(calculated_average, 2)
+                if calculated_average is not None
+                else None
+            ),
+            "source": "api" if api_average is not None else "calculated",
+            "api_average": round(api_average, 2) if api_average is not None else None,
+            "calculated_average": (
+                round(calculated_average, 2)
+                if calculated_average is not None
+                else None
+            ),
+            "rounded_grade": (
+                _school_round(calculated_average, classwork_average, other_average)
+                if calculated_average is not None
+                else None
+            ),
+            "classwork_values": classwork_values,
+            "other_values": other_values,
+            "classwork_average": (
+                round(classwork_average, 2)
+                if classwork_average is not None
+                else None
+            ),
+            "other_average": (
+                round(other_average, 2)
+                if other_average is not None
+                else None
+            ),
+            "grade_items": _grade_items_for_subject(data, subject),
+            "finalgrade_items": _finalgrade_items_for_subject(data, subject),
+        }
+    return result
+
+
+def _grade_items_for_subject(data: dict[str, Any], subject: str) -> list[dict[str, Any]]:
+    """Return parseable grade items for one subject without teacher/student details."""
+    items: list[dict[str, Any]] = []
+    for item in _data_list(data.get("grades")):
+        if not isinstance(item, dict) or _subject_name(item) != subject:
+            continue
+
+        value = item.get("value")
+        parsed = _parse_grade(value)
+        if parsed is None:
+            continue
+
+        items.append(
+            {
+                "id": item.get("id"),
+                "given_at": item.get("given_at"),
+                "value": value,
+                "parsed": parsed,
+                "kind_text": _grade_kind_text(item) or None,
+                "is_classwork": _is_classwork(item),
+                "keys": _keys(item),
+            }
+        )
+    return items
+
+
+def _finalgrade_items_for_subject(data: dict[str, Any], subject: str) -> list[dict[str, Any]]:
+    """Return finalgrade fields that may contain API-provided averages."""
+    interesting_keys = (
+        "id",
+        "value",
+        "value_int",
+        "value_calc",
+        "value_calc_int",
+        "average",
+        "avg",
+        "calculation",
+        "calculated",
+        "calculation_for",
+        "calculation_verbal",
+        "final_value",
+        "interval_id",
+        "subject_id",
+    )
+    items: list[dict[str, Any]] = []
+    for item in _data_list(data.get("finalgrades")):
+        if not isinstance(item, dict) or _subject_name(item) != subject:
+            continue
+        items.append(
+            {
+                key: item.get(key)
+                for key in interesting_keys
+                if key in item
+            }
+        )
+    return items
+
+
+def _homework_debug(data: dict[str, Any]) -> dict[str, Any]:
+    """Return compact diagnostics for homework calendar source data."""
+    note_count = 0
+    homework_like_count = 0
+    missing_homework_count = 0
+    note_type_names: set[str] = set()
+
+    def walk(value: Any) -> None:
+        nonlocal note_count, homework_like_count, missing_homework_count
+        if isinstance(value, dict):
+            if value.get("missing_homework"):
+                missing_homework_count += 1
+            notes = value.get("notes")
+            if isinstance(notes, list):
+                note_count += len(notes)
+                for note in notes:
+                    if not isinstance(note, dict):
+                        continue
+                    note_type = note.get("type")
+                    if isinstance(note_type, dict):
+                        name = note_type.get("name")
+                        if isinstance(name, str):
+                            note_type_names.add(name)
+                    text = str(note).lower()
+                    if "hausauf" in text or "homework" in text:
+                        homework_like_count += 1
+            for nested in value.values():
+                walk(nested)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    for key in ("journal_weeks", "journal_lesson_student"):
+        walk(data.get(key))
+
+    return {
+        "note_count": note_count,
+        "homework_like_note_count": homework_like_count,
+        "missing_homework_count": missing_homework_count,
+        "note_type_names": sorted(note_type_names),
     }
 
 
