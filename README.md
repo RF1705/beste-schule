@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/RF1705/beste-schule)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rf1705-yellow?logo=buymeacoffee)](https://buymeacoffee.com/rf1705)
 
-Read-only Home Assistant integration for beste.schule timetables, absences, school time and grade averages.
+Home Assistant integration for beste.schule timetables, absences, school time and grade averages.
 
 This custom integration connects Home Assistant to [beste.schule](https://beste.schule/) with a Personal Access Token. It creates calendar entries for lessons and absences, exposes the current school-time state and adds grade average sensors per subject.
 
@@ -60,8 +60,6 @@ Create a token in your beste.schule user account:
 4. Create a new token under **Personal Access Token**.
 5. Copy the token and paste it into the Home Assistant setup dialog.
 
-If you registered with **Sign in with Apple**, sign in to beste.schule the same way in the browser first. The token is still created inside your beste.schule user account.
-
 ## Entities
 
 The integration currently creates:
@@ -78,7 +76,7 @@ The integration currently creates:
 
 ### stundenplan-card compatibility
 
-The beta releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through its **Beliebiger Sensor (JSON)** source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
+The beta releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through JSON source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
 
 Use the `Timetable card` sensor from this integration in the card:
 
