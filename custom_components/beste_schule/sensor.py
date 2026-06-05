@@ -21,6 +21,7 @@ from .calendar import (
     _cached_lesson_events,
     _find_value,
     _iter_values,
+    _lesson_events,
     _parse_date,
 )
 from .const import DOMAIN
@@ -360,17 +361,18 @@ def _event_cell_text(event: Any) -> str:
 
 def _timetable_card_rows(
     coordinator: BesteSchuleDataUpdateCoordinator,
+    week_offset: int,
 ) -> list[dict[str, Any]]:
-    """Return current-week rows compatible with fabel-smith/stundenplan-card."""
+    """Return week rows compatible with fabel-smith/stundenplan-card."""
     now = dt_util.now()
-    week_start = (now - timedelta(days=now.weekday())).replace(
+    week_start = (now - timedelta(days=now.weekday()) + timedelta(weeks=week_offset)).replace(
         hour=0,
         minute=0,
         second=0,
         microsecond=0,
     )
     week_end = week_start + timedelta(days=7)
-    events = _cached_lesson_events(coordinator, week_start, week_end)
+    events = _lesson_events(coordinator.data, week_start, week_end)
     rows: dict[tuple[str, str], dict[str, Any]] = {}
 
     for event in events:
@@ -409,10 +411,10 @@ def _timetable_card_days() -> list[str]:
     return ["Mo", "Di", "Mi", "Do", "Fr"]
 
 
-def _timetable_card_meta_days() -> list[str]:
-    """Return current-week dates for stundenplan-card headers."""
+def _timetable_card_meta_days(week_offset: int) -> list[str]:
+    """Return week dates for stundenplan-card headers."""
     now = dt_util.now()
-    week_start = now.date() - timedelta(days=now.weekday())
+    week_start = now.date() - timedelta(days=now.weekday()) + timedelta(weeks=week_offset)
     return [
         (week_start + timedelta(days=offset)).strftime("%Y%m%d")
         for offset in range(5)
@@ -455,7 +457,6 @@ class BesteSchuleTimetableCardSensor(
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:table-clock"
-    _attr_translation_key = "timetable_card"
 
     def __init__(
         self,
@@ -465,6 +466,7 @@ class BesteSchuleTimetableCardSensor(
         super().__init__(coordinator)
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_timetable_card"
+        self._attr_translation_key = "timetable_card"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -474,21 +476,35 @@ class BesteSchuleTimetableCardSensor(
     @property
     def native_value(self) -> int:
         """Return the number of timetable rows."""
-        return len(_timetable_card_rows(self.coordinator))
+        return len(_timetable_card_rows(self.coordinator, 0))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return rows in formats consumed by stundenplan-card."""
-        rows = _timetable_card_rows(self.coordinator)
+        rows = _timetable_card_rows(self.coordinator, 0)
+        next_rows = _timetable_card_rows(self.coordinator, 1)
         days = _timetable_card_days()
-        meta = {"days": _timetable_card_meta_days()}
+        meta = {"days": _timetable_card_meta_days(0)}
+        next_meta = {"days": _timetable_card_meta_days(1)}
         return {
             "rows_table": rows,
             "rows_json": rows,
             "plan": rows,
+            "rows_table_next_week": next_rows,
+            "rows_json_next_week": next_rows,
+            "next_week": {
+                "rows_table": next_rows,
+                "rows_json": next_rows,
+                "plan": next_rows,
+                "days": days,
+                "meta": next_meta,
+                "meta_ha": next_meta,
+                "no_plan": not next_rows,
+            },
             "days": days,
             "meta": meta,
             "meta_ha": meta,
+            "week_offset": 0,
             "no_plan": not rows,
         }
 

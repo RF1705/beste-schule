@@ -78,7 +78,7 @@ The integration currently creates:
 
 ### stundenplan-card beta
 
-Version `0.3.0b1` adds a beta sensor for [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card).
+Version `0.3.0b2` adds a beta sensor for [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card).
 
 Use the `Timetable card` sensor as a **Beliebiger Sensor (JSON)** source in the card:
 
@@ -90,7 +90,7 @@ source_attribute: rows_table
 source_time_key: time
 ```
 
-The sensor exposes `rows_table`, `rows_json`, `plan`, `days`, `meta`, and `meta_ha` attributes for the current Monday-Friday week.
+The sensor exposes `rows_table`, `rows_json`, `plan`, `days`, `meta`, and `meta_ha` attributes for the current Monday-Friday week. It also exposes `rows_table_next_week`, `rows_json_next_week`, and `next_week` attributes for the following week.
 
 Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
 
