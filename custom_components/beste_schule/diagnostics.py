@@ -12,7 +12,7 @@ from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DOMAIN
 from .entity import school_name_from_data
 
 MAX_LIST_ITEMS = 3
-MAX_DEPTH = 5
+MAX_DEPTH = 7
 REDACTED_KEYS = {
     CONF_TOKEN,
     "access_token",
@@ -37,9 +37,13 @@ IMPORTANT_KEYS = {
     "from",
     "to",
     "type",
+    "status",
+    "group",
     "subject",
     "room",
+    "rooms",
     "teacher",
+    "teachers",
     "times",
     "nr",
     "notes",

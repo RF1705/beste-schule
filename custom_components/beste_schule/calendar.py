@@ -322,9 +322,9 @@ def _all_text(value: Any) -> str:
     return ""
 
 
-def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], str]:
+def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[str, str | None]]:
     """Return cancellation/substitution markers keyed by date and lesson number."""
-    overlay: dict[tuple[date, int], str] = {}
+    overlay: dict[tuple[date, int], dict[str, str | None]] = {}
     source = data.get("substitution_days")
     for item in _iter_values(source):
         if not isinstance(item, dict):
@@ -346,11 +346,17 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], str]:
             status in {"cancelled", "canceled", "ausfall", "free"}
             or any(marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel"))
         ):
-            overlay[key] = "cancelled"
+            overlay[key] = {"status": "cancelled"}
         elif status in {"substitution", "vertretung"} or any(
             marker in text for marker in ("vertret", "ersatz", "substitution")
         ):
-            overlay.setdefault(key, "substitution")
+            overlay[key] = {
+                "status": "substitution",
+                "title": _find_nested_text(item, TITLE_KEYS),
+                "location": _find_nested_text(item, ROOM_KEYS),
+                "teacher": _find_nested_text(item, TEACHER_KEYS),
+                "notes": _extract_text(item.get("notes")),
+            }
     return overlay
 
 
@@ -416,7 +422,8 @@ def _lesson_events(
                 overlay_value = overlay.get((current_day, int(number)))
             except (TypeError, ValueError):
                 overlay_value = None
-            if overlay_value == "cancelled":
+            overlay_status = overlay_value.get("status") if overlay_value else None
+            if overlay_status == "cancelled":
                 continue
 
             event_start = datetime.combine(current_day, start_time, start_date.tzinfo)
@@ -425,11 +432,22 @@ def _lesson_events(
                 key = _event_key(current_day, start_time, end_time, title, location)
                 if key not in seen:
                     seen.add(key)
-                    summary = f"{title} (Vertretung)" if overlay_value == "substitution" else title
+                    substitution_title = overlay_value.get("title") if overlay_value else None
+                    summary = substitution_title or title
                     event_description = description
-                    if overlay_value == "substitution":
+                    if overlay_status == "substitution":
+                        substitution_location = overlay_value.get("location") if overlay_value else None
+                        substitution_teacher = overlay_value.get("teacher") if overlay_value else None
+                        substitution_notes = overlay_value.get("notes") if overlay_value else None
                         event_description = "\n".join(
-                            part for part in (description, "Vertretung") if part
+                            part
+                            for part in (
+                                f"Vertretung für: {title}",
+                                f"Raum: {substitution_location}" if substitution_location else None,
+                                substitution_teacher,
+                                substitution_notes,
+                            )
+                            if part
                         )
                     events.append(
                         CalendarEvent(

@@ -17,7 +17,7 @@ from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
 from .entity import school_address_from_data, school_coordinates_from_data, school_name_from_data
 
-INTEGRATION_VERSION = "0.1.10"
+INTEGRATION_VERSION = "0.1.11"
 CLASSWORK_MARKERS = (
     "klassenarbeit",
     "klassenarbeiten",
