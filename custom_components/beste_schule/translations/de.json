@@ -22,6 +22,9 @@
   },
   "entity": {
     "sensor": {
+      "sick_days": {
+        "name": "Kranktage"
+      },
       "current_lesson": {
         "name": "Aktuelle Stunde"
       },

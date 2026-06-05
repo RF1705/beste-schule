@@ -22,6 +22,9 @@
   },
   "entity": {
     "sensor": {
+      "sick_days": {
+        "name": "Sick days"
+      },
       "current_lesson": {
         "name": "Current lesson"
       },

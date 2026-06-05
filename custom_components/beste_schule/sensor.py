@@ -14,7 +14,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .calendar import TIMETABLE_CACHE_DAYS, _cached_lesson_events
+from .calendar import (
+    DATE_KEYS,
+    TIMETABLE_CACHE_DAYS,
+    _absence_text,
+    _cached_lesson_events,
+    _find_value,
+    _iter_values,
+    _parse_date,
+)
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
@@ -38,6 +46,7 @@ async def async_setup_entry(
     coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [
+            BesteSchuleSickDaysSensor(entry, coordinator),
             BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
             BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
             *[
@@ -171,7 +180,11 @@ def _school_round(value: float, classwork_average: float | None, other_average: 
     """Round a school grade, resolving .5 towards the classwork average."""
     lower = int(value)
     fraction = value - lower
-    if abs(fraction - 0.5) < 0.00001 and classwork_average is not None and other_average is not None:
+    if (
+        abs(fraction - 0.5) < 0.00001
+        and classwork_average is not None
+        and other_average is not None
+    ):
         if classwork_average < other_average:
             return lower
         if classwork_average > other_average:
@@ -221,6 +234,63 @@ def _slug(value: str) -> str:
     """Return a simple slug for unique ids."""
     slug = re.sub(r"[^a-z0-9]+", "_", value.lower())
     return slug.strip("_") or "unknown"
+
+
+def _sick_absence_days(data: dict[str, Any]) -> set[str]:
+    """Return all absence dates that look like sick days."""
+    days: set[str] = set()
+    for item in _iter_values(data.get("journal_day_student")):
+        if not isinstance(item, dict):
+            continue
+
+        lesson_date = _parse_date(_find_value(item, DATE_KEYS))
+        if lesson_date is None:
+            continue
+
+        absent = item.get("present") == 0 or bool(item.get("absence"))
+        if not absent:
+            continue
+
+        reason = (_absence_text(item.get("absence")) or "").lower()
+        if "krank" in reason or "sick" in reason:
+            days.add(lesson_date.isoformat())
+
+    return days
+
+
+class BesteSchuleSickDaysSensor(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
+):
+    """Count known sick absence days."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:calendar-remove"
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_translation_key = "sick_days"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_sick_days"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of known sick days."""
+        return len(_sick_absence_days(self.coordinator.data))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, list[str]]:
+        """Return the dates counted by this sensor."""
+        return {"dates": sorted(_sick_absence_days(self.coordinator.data))}
 
 
 class BesteSchuleLessonSensor(
@@ -285,6 +355,7 @@ class BesteSchuleGradeAverageSensor(
 
     _attr_has_entity_name = True
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
 
     def __init__(
         self,
@@ -295,7 +366,7 @@ class BesteSchuleGradeAverageSensor(
         super().__init__(coordinator)
         self._entry = entry
         self._subject = subject
-        self._attr_name = f"Notendurchschnitt {subject}"
+        self._attr_name = f"Note {subject}"
         self._attr_unique_id = f"{entry.entry_id}_grade_average_{_slug(subject)}"
 
     @property
@@ -322,7 +393,7 @@ class BesteSchuleGradeAverageSensor(
         if calculated_average is None:
             return None
 
-        return _school_round(calculated_average, classwork_average, other_average)
+        return round(calculated_average, 2)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -346,6 +417,11 @@ class BesteSchuleGradeAverageSensor(
             "classwork_average": round(classwork_average, 2) if classwork_average is not None else None,
             "other_average": round(other_average, 2) if other_average is not None else None,
             "calculated_average": round(calculated_average, 2) if calculated_average is not None else None,
+            "rounded_grade": (
+                _school_round(calculated_average, classwork_average, other_average)
+                if calculated_average is not None
+                else None
+            ),
             "classwork_grades": classwork_values,
             "other_grades": other_values,
         }
