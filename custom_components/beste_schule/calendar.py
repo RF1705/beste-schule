@@ -97,6 +97,7 @@ TEACHER_KEYS = ("teacher", "teachers", "teacherName", "teacher_name")
 TIMETABLE_SOURCE_KEYS = (
     "time_tables_current",
 )
+TIMETABLE_CACHE_DAYS = 21
 
 
 async def async_setup_entry(
@@ -463,6 +464,55 @@ def _lesson_events(
     return events
 
 
+def _cached_lesson_events(
+    coordinator: BesteSchuleDataUpdateCoordinator,
+    start_date: datetime,
+    end_date: datetime,
+) -> list[CalendarEvent]:
+    """Return timetable events from an in-memory rolling cache."""
+    now = dt_util.now()
+    cache_start = getattr(coordinator, "timetable_cache_start", None)
+    if cache_start is None:
+        cache_start = now
+        coordinator.timetable_cache_start = cache_start
+
+    horizon = now + timedelta(days=TIMETABLE_CACHE_DAYS)
+    cache: dict[str, CalendarEvent] = getattr(coordinator, "timetable_event_cache", {})
+    if not hasattr(coordinator, "timetable_event_cache"):
+        coordinator.timetable_event_cache = cache
+
+    refresh_start = max(cache_start, now.replace(hour=0, minute=0, second=0, microsecond=0))
+    if refresh_start < horizon:
+        cache_keys = [
+            key
+            for key, event in cache.items()
+            if event.start >= refresh_start and event.start < horizon
+        ]
+        for key in cache_keys:
+            cache.pop(key, None)
+
+        for event in _lesson_events(coordinator.data, refresh_start, horizon):
+            cache[_cache_key(event)] = event
+
+    visible_start = max(start_date, cache_start)
+    visible_end = min(end_date, horizon)
+    if visible_start >= visible_end:
+        return []
+
+    events = [
+        event
+        for event in cache.values()
+        if event.end > visible_start and event.start < visible_end
+    ]
+    events.sort(key=lambda event: event.start)
+    return events
+
+
+def _cache_key(event: CalendarEvent) -> str:
+    """Build a stable cache key for one lesson slot."""
+    return f"{event.start.isoformat()}|{event.end.isoformat()}"
+
+
 def _absence_text(value: Any) -> str | None:
     """Extract absence text from common absence shapes."""
     text = _extract_text(value)
@@ -546,7 +596,11 @@ class BesteSchuleTimetableCalendar(
     def event(self) -> CalendarEvent | None:
         """Return the current or next upcoming event."""
         now = dt_util.now()
-        events = _lesson_events(self.coordinator.data, now, now + timedelta(days=14))
+        events = _cached_lesson_events(
+            self.coordinator,
+            now,
+            now + timedelta(days=TIMETABLE_CACHE_DAYS),
+        )
         return events[0] if events else None
 
     async def async_get_events(
@@ -556,7 +610,7 @@ class BesteSchuleTimetableCalendar(
         end_date: datetime,
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
-        return _lesson_events(self.coordinator.data, start_date, end_date)
+        return _cached_lesson_events(self.coordinator, start_date, end_date)
 
 
 class BesteSchuleAbsenceCalendar(

@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .calendar import _lesson_events
+from .calendar import TIMETABLE_CACHE_DAYS, _cached_lesson_events
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
@@ -268,10 +268,10 @@ class BesteSchuleLessonSensor(
     def _event(self) -> Any | None:
         """Return the selected lesson event."""
         now = dt_util.now()
-        events = _lesson_events(
-            self.coordinator.data,
+        events = _cached_lesson_events(
+            self.coordinator,
             now - timedelta(minutes=1),
-            now + timedelta(days=14),
+            now + timedelta(days=TIMETABLE_CACHE_DAYS),
         )
         if self._kind == "current_lesson":
             return next((event for event in events if event.start <= now < event.end), None)

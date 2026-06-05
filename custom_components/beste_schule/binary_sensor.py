@@ -50,12 +50,12 @@ class BesteSchuleAtSchoolBinarySensor(
     @property
     def is_on(self) -> bool:
         """Return whether a lesson is currently active and no absence covers today."""
-        return is_at_school(self.coordinator.data)
+        return is_at_school(self.coordinator)
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
         """Return current lesson details."""
-        current = current_lesson(self.coordinator.data)
+        current = current_lesson(self.coordinator)
         return {
             "current_lesson": current.summary if current else None,
             "current_location": current.location if current else None,
