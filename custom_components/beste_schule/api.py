@@ -143,16 +143,24 @@ class BesteSchuleApi:
                 {"include": "subject,room,teacher,group,time"},
             ),
             "journal_days": (
-                "journal-days",
+                "journal/days",
                 {"include": "lessons,subject,room,teacher,group,time"},
             ),
             "journal_weeks": (
-                "journal-weeks",
+                "journal/weeks",
                 {"include": "days,lessons,subject,room,teacher,group,time"},
             ),
             "journal_lessons": (
-                "journal-lessons",
+                "journal/lessons",
                 {"include": "day,subject,room,teacher,group,time"},
+            ),
+            "journal_lesson_student": (
+                "journal/lesson-student",
+                None,
+            ),
+            "journal_day_student": (
+                "journal/day-student",
+                None,
             ),
             "substitution_days": ("substitution-plans/days", None),
             "announcements": ("announcements", None),
@@ -169,6 +177,8 @@ class BesteSchuleApi:
                     "filter[range]": f"{range_start.isoformat()},{range_end.isoformat()}",
                 },
             )
+        else:
+            data["journal_lessons_student"] = {"error": "Could not determine student id"}
 
         for key, (route, params) in routes.items():
             try:

@@ -103,6 +103,8 @@ TIMETABLE_SOURCE_KEYS = (
     "journal_days",
     "journal_weeks",
     "journal_lessons",
+    "journal_lesson_student",
+    "journal_day_student",
     "journal_lessons_student",
 )
 

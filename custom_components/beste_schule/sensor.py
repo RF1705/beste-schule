@@ -25,6 +25,8 @@ TIMETABLE_KEYS = (
     "journal_days",
     "journal_weeks",
     "journal_lessons",
+    "journal_lesson_student",
+    "journal_day_student",
     "journal_lessons_student",
 )
 
@@ -79,6 +81,38 @@ def _response_status(value: Any) -> str:
         return f"dict: {keys}" if keys else "dict"
 
     return type(value).__name__
+
+
+def _first_id(value: Any) -> str:
+    """Return the first id found in common response shapes."""
+    if isinstance(value, dict) and isinstance(value.get("data"), list):
+        return _first_id(value["data"])
+    if isinstance(value, list):
+        for item in value:
+            found = _first_id(item)
+            if found != "missing":
+                return found
+    if isinstance(value, dict):
+        found = value.get("id")
+        if isinstance(found, (int, str)):
+            return str(found)
+    return "missing"
+
+
+def _school_status(value: Any) -> str:
+    """Return a compact school diagnostic status."""
+    if isinstance(value, dict) and isinstance(value.get("error"), str):
+        return value["error"]
+    if isinstance(value, dict):
+        data = value.get("data")
+        if isinstance(data, dict):
+            name = data.get("name") or data.get("displayName") or data.get("display_name")
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+        name = value.get("name") or value.get("displayName") or value.get("display_name")
+        if isinstance(name, str) and name.strip():
+            return name.strip()
+    return _response_status(value)
 
 
 class BesteSchuleCountSensor(
@@ -145,7 +179,10 @@ class BesteSchuleTimetableDiagnosticsSensor(
     @property
     def extra_state_attributes(self) -> dict[str, str]:
         """Return per-route diagnostic statuses."""
-        return {
+        attributes = {
             key: _response_status(self.coordinator.data.get(key))
             for key in TIMETABLE_KEYS
         }
+        attributes["students_first_id"] = _first_id(self.coordinator.data.get("students"))
+        attributes["school"] = _school_status(self.coordinator.data.get("school"))
+        return attributes
