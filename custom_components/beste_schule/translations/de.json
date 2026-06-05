@@ -33,11 +33,14 @@
       },
       "finalgrades": {
         "name": "Zeugnisnoten"
+      },
+      "timetable_data": {
+        "name": "Stundenplan-Daten"
       }
     },
     "calendar": {
-      "calendar": {
-        "name": "Kalender"
+      "timetable": {
+        "name": "Stundenplan"
       }
     }
   }

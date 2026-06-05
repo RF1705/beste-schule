@@ -33,11 +33,14 @@
       },
       "finalgrades": {
         "name": "Final grades"
+      },
+      "timetable_data": {
+        "name": "Timetable data"
       }
     },
     "calendar": {
-      "calendar": {
-        "name": "Calendar"
+      "timetable": {
+        "name": "Timetable"
       }
     }
   }

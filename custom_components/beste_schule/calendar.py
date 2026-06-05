@@ -288,7 +288,7 @@ class BesteSchuleCalendar(
     """Calendar for beste.schule timetable entries."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "calendar"
+    _attr_translation_key = "timetable"
 
     def __init__(
         self,
