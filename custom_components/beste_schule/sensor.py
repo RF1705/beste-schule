@@ -386,7 +386,8 @@ def _timetable_card_rows(
         row = rows.setdefault(
             key,
             {
-                "time": f"{start}-{end}",
+                "ID": len(rows) + 1,
+                "Stunde": f"{start}-{end}",
                 "start": start,
                 "end": end,
                 "Mo": "",
@@ -482,31 +483,7 @@ class BesteSchuleTimetableCardSensor(
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return rows in formats consumed by stundenplan-card."""
         rows = _timetable_card_rows(self.coordinator, 0)
-        next_rows = _timetable_card_rows(self.coordinator, 1)
-        days = _timetable_card_days()
-        meta = {"days": _timetable_card_meta_days(0)}
-        next_meta = {"days": _timetable_card_meta_days(1)}
-        return {
-            "rows_table": rows,
-            "rows_json": rows,
-            "plan": rows,
-            "rows_table_next_week": next_rows,
-            "rows_json_next_week": next_rows,
-            "next_week": {
-                "rows_table": next_rows,
-                "rows_json": next_rows,
-                "plan": next_rows,
-                "days": days,
-                "meta": next_meta,
-                "meta_ha": next_meta,
-                "no_plan": not next_rows,
-            },
-            "days": days,
-            "meta": meta,
-            "meta_ha": meta,
-            "week_offset": 0,
-            "no_plan": not rows,
-        }
+        return {"plan": rows}
 
 
 class BesteSchuleSickDaysSensor(
