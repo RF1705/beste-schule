@@ -48,6 +48,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             BesteSchuleSickDaysSensor(entry, coordinator),
+            BesteSchuleClassSensor(entry, coordinator),
             BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
             BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
             *[
@@ -296,6 +297,76 @@ def _sick_absence_days(data: dict[str, Any]) -> set[str]:
             days.add(lesson_date.isoformat())
 
     return days
+
+
+def _student_data(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the first student data dict."""
+    students = data.get("students")
+    if isinstance(students, dict):
+        value = students.get("data")
+        if isinstance(value, list):
+            return next((item for item in value if isinstance(item, dict)), None)
+        if isinstance(value, dict):
+            return value
+    if isinstance(students, list):
+        return next((item for item in students if isinstance(item, dict)), None)
+    return None
+
+
+def _student_class(data: dict[str, Any]) -> str | None:
+    """Return the student's main class name."""
+    student = _student_data(data)
+    if not isinstance(student, dict):
+        return None
+
+    groups = student.get("meta_groups")
+    if isinstance(groups, list):
+        main_groups = [
+            group
+            for group in groups
+            if isinstance(group, dict) and group.get("meta") in (1, True)
+        ]
+        for group in [*main_groups, *groups]:
+            if not isinstance(group, dict):
+                continue
+            text = _text_value(group.get("local_id")) or _text_value(group.get("name"))
+            if text:
+                return text
+
+    for key in ("class", "class_name", "className", "group", "group_name"):
+        text = _text_value(student.get(key))
+        if text:
+            return text
+    return None
+
+
+class BesteSchuleClassSensor(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
+):
+    """Expose the student's main class."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:google-classroom"
+    _attr_translation_key = "school_class"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_school_class"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the student's main class."""
+        return _student_class(self.coordinator.data)
 
 
 class BesteSchuleSickDaysSensor(

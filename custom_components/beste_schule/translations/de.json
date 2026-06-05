@@ -25,6 +25,9 @@
       "sick_days": {
         "name": "Kranktage"
       },
+      "school_class": {
+        "name": "Klasse"
+      },
       "current_lesson": {
         "name": "Aktuelle Stunde"
       },

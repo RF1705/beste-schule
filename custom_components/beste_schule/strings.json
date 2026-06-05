@@ -25,6 +25,9 @@
       "sick_days": {
         "name": "Sick days"
       },
+      "school_class": {
+        "name": "Class"
+      },
       "current_lesson": {
         "name": "Current lesson"
       },
