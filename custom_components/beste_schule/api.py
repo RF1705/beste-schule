@@ -105,7 +105,25 @@ class BesteSchuleApi:
         """Fetch the first read-only routes we want to explore."""
         routes = {
             "me": ("user-management/me", None),
-            "time_tables": ("time-tables", None),
+            "time_tables": (
+                "time-tables",
+                {
+                    "include": (
+                        "times,lessons,subject,subjects,room,rooms,teacher,"
+                        "teachers,group,groups"
+                    )
+                },
+            ),
+            "time_tables_current": ("time-tables/current", None),
+            "time_tables_show_current": ("time-tables/showCurrent", None),
+            "time_table_times": (
+                "time-table-times",
+                {"include": "lessons,subject,room,teacher,group"},
+            ),
+            "time_table_time_lessons": (
+                "time-table-time-lessons",
+                {"include": "subject,room,teacher,group,time"},
+            ),
             "substitution_days": ("substitution-plans/days", None),
             "announcements": ("announcements", None),
             "checklists": ("checklists", None),
