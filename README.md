@@ -1,11 +1,14 @@
 # beste.schule for Home Assistant
 
-[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=RF1705&repository=beste-schule&category=integration)
+[![HACS](https://github.com/RF1705/beste-schule/actions/workflows/hacs.yml/badge.svg)](https://github.com/RF1705/beste-schule/actions/workflows/hacs.yml)
+[![Hassfest](https://github.com/RF1705/beste-schule/actions/workflows/hassfest.yml/badge.svg)](https://github.com/RF1705/beste-schule/actions/workflows/hassfest.yml)
+[![GitHub release](https://img.shields.io/github/v/release/RF1705/beste-schule)](https://github.com/RF1705/beste-schule/releases)
+[![License](https://img.shields.io/github/license/RF1705/beste-schule)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rf1705-yellow?logo=buymeacoffee)](https://buymeacoffee.com/rf1705)
 
-A custom Home Assistant integration for [beste.schule](https://beste.schule/) accounts.
+Read-only Home Assistant integration for beste.schule timetables, absences, school time and grade averages.
 
-The integration is read-only. It uses a beste.schule Personal Access Token and creates Home Assistant entities for timetable, absences, school time and grade averages.
+This custom integration connects Home Assistant to [beste.schule](https://beste.schule/) with a Personal Access Token. It creates calendar entries for lessons and absences, exposes the current school-time state and adds grade average sensors per subject.
 
 ## Features
 
@@ -17,6 +20,8 @@ The integration is read-only. It uses a beste.schule Personal Access Token and c
 - English and German translations
 
 ## Installation with HACS
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=RF1705&repository=beste-schule&category=integration)
 
 1. Open the HACS repository link above.
 2. Confirm that the repository is added as an integration.
