@@ -162,7 +162,30 @@ def _grade_kind_text(grade: dict[str, Any]) -> str:
         "comment",
         "description",
     ):
-        text = _text_value(grade.get(key))
+        value = grade.get(key)
+        if key == "collection" and isinstance(value, dict):
+            for nested_key in (
+                "type",
+                "grade_type",
+                "gradeType",
+                "category",
+                "local_id",
+                "localId",
+                "abbreviation",
+                "name",
+                "shortName",
+                "short_name",
+                "title",
+                "value",
+                "comment",
+                "description",
+            ):
+                text = _text_value(value.get(nested_key))
+                if text:
+                    values.append(text)
+            continue
+
+        text = _text_value(value)
         if text:
             values.append(text)
     return " ".join(values).lower()
@@ -182,13 +205,15 @@ def _average(values: list[float]) -> float | None:
 
 
 def _weighted_grade_average(
-    classwork_average: float | None,
-    other_average: float | None,
+    classwork_values: list[float],
+    other_values: list[float],
 ) -> float | None:
-    """Return average with classwork weighted twice and other grades once."""
-    if classwork_average is not None and other_average is not None:
-        return ((classwork_average * 2) + other_average) / 3
-    return classwork_average or other_average
+    """Return average with every classwork grade counted twice."""
+    weighted_count = (len(classwork_values) * 2) + len(other_values)
+    if weighted_count == 0:
+        return None
+    weighted_sum = (sum(classwork_values) * 2) + sum(other_values)
+    return weighted_sum / weighted_count
 
 
 def _school_round(value: float, classwork_average: float | None, other_average: float | None) -> int:
@@ -400,7 +425,7 @@ class BesteSchuleGradeAverageSensor(
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
 
-        calculated_average = _weighted_grade_average(classwork_average, other_average)
+        calculated_average = _weighted_grade_average(classwork_values, other_values)
 
         if calculated_average is None:
             return None
@@ -414,7 +439,7 @@ class BesteSchuleGradeAverageSensor(
         classwork_values, other_values = self._grouped_values
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
-        calculated_average = _weighted_grade_average(classwork_average, other_average)
+        calculated_average = _weighted_grade_average(classwork_values, other_values)
 
         return {
             "subject": self._subject,

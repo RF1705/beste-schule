@@ -124,7 +124,7 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
         classwork_values, other_values = _subject_grade_values(data, subject)
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
-        calculated_average = _weighted_grade_average(classwork_average, other_average)
+        calculated_average = _weighted_grade_average(classwork_values, other_values)
 
         result[subject] = {
             "sensor_value": (
@@ -160,6 +160,7 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
                 else None
             ),
             "other_weight": 1,
+            "weighting_method": "classwork grades count twice",
             "grade_items": _grade_items_for_subject(data, subject),
             "finalgrade_items": _finalgrade_items_for_subject(data, subject),
         }
