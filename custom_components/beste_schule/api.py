@@ -162,7 +162,14 @@ class BesteSchuleApi:
                 "journal/day-student",
                 None,
             ),
-            "substitution_days": ("substitution-plans/days", None),
+            "substitution_days": (
+                "substitution-plans/days",
+                {
+                    "include": "lessons,subject,teachers,rooms,notes",
+                    "filter[range]": f"{range_start.isoformat()},{range_end.isoformat()}",
+                    "per_page": 100,
+                },
+            ),
             "announcements": ("announcements", None),
             "checklists": ("checklists", None),
             "grades": ("grades", None),

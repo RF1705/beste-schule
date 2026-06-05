@@ -341,9 +341,15 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], str]:
         except (TypeError, ValueError):
             continue
 
-        if any(marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel")):
+        status = str(item.get("status", "")).lower()
+        if (
+            status in {"cancelled", "canceled", "ausfall", "free"}
+            or any(marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel"))
+        ):
             overlay[key] = "cancelled"
-        elif any(marker in text for marker in ("vertret", "ersatz", "substitution")):
+        elif status in {"substitution", "vertretung"} or any(
+            marker in text for marker in ("vertret", "ersatz", "substitution")
+        ):
             overlay.setdefault(key, "substitution")
     return overlay
 

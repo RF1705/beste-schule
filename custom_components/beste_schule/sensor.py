@@ -15,8 +15,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
+from .entity import school_address_from_data, school_coordinates_from_data, school_name_from_data
 
-INTEGRATION_VERSION = "0.1.9"
+INTEGRATION_VERSION = "0.1.10"
 CLASSWORK_MARKERS = (
     "klassenarbeit",
     "klassenarbeiten",
@@ -56,6 +57,7 @@ async def async_setup_entry(
             BesteSchuleCountSensor(entry, coordinator, "grades"),
             BesteSchuleCountSensor(entry, coordinator, "finalgrades"),
             BesteSchuleTimetableDiagnosticsSensor(entry, coordinator),
+            BesteSchuleSchoolLocationSensor(entry, coordinator),
             *[
                 BesteSchuleGradeAverageSensor(entry, coordinator, subject)
                 for subject in _grade_subjects(coordinator.data)
@@ -411,6 +413,48 @@ class BesteSchuleGradeAverageSensor(
     def _grouped_values(self) -> tuple[list[float], list[float]]:
         """Return all parseable grades grouped by type."""
         return _subject_grade_values(self.coordinator.data, self._subject)
+
+
+class BesteSchuleSchoolLocationSensor(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
+):
+    """Expose the school as a map-friendly sensor."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:school"
+    _attr_translation_key = "school_location"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_school_location"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def native_value(self) -> str:
+        """Return a short school label for map cards."""
+        return "56. OS" if school_name_from_data(self.coordinator.data) else "Schule"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | float | None]:
+        """Return map and address attributes."""
+        attributes: dict[str, str | float | None] = {
+            "school": school_name_from_data(self.coordinator.data),
+            "school_address": school_address_from_data(self.coordinator.data),
+        }
+        coordinates = school_coordinates_from_data(self.coordinator.data)
+        if coordinates:
+            attributes["latitude"] = coordinates[0]
+            attributes["longitude"] = coordinates[1]
+        return attributes
 
 
 class BesteSchuleTimetableDiagnosticsSensor(

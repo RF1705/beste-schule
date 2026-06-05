@@ -36,6 +36,9 @@
       },
       "timetable_data": {
         "name": "Timetable data"
+      },
+      "school_location": {
+        "name": "School"
       }
     },
     "calendar": {

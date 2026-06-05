@@ -36,6 +36,9 @@
       },
       "timetable_data": {
         "name": "Stundenplan-Daten"
+      },
+      "school_location": {
+        "name": "Schule"
       }
     },
     "calendar": {
