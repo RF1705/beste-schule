@@ -867,8 +867,12 @@ def _exam_events(
             description_parts.append(f"Typ: {entry['note_type']}")
 
         if start_time is not None and end_time is not None:
-            event_start: date | datetime = datetime.combine(exam_date, start_time)
-            event_end: date | datetime = datetime.combine(exam_date, end_time)
+            event_start: date | datetime = datetime.combine(
+                exam_date, start_time, start_date.tzinfo
+            )
+            event_end: date | datetime = datetime.combine(
+                exam_date, end_time, start_date.tzinfo
+            )
         else:
             event_start = exam_date
             event_end = exam_date + timedelta(days=1)

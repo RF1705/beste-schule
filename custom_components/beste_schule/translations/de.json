@@ -31,6 +31,13 @@
           "enable_homework_calendar": "Hausaufgaben-Kalender",
           "enable_exam_calendar": "Arbeiten-Kalender",
           "enable_homework_todo": "Hausaufgaben-To-do-Liste"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Erstellt einen Home-Assistant-Kalender für Unterrichtsstunden.",
+          "enable_absence_calendar": "Erstellt einen Home-Assistant-Kalender für Abwesenheiten.",
+          "enable_homework_calendar": "Erstellt einen Home-Assistant-Kalender für Hausaufgaben.",
+          "enable_exam_calendar": "Erstellt einen Home-Assistant-Kalender für Arbeiten, LK und Tests.",
+          "enable_homework_todo": "Erstellt eine Home-Assistant-To-do-Liste für Hausaufgaben."
         }
       }
     }
