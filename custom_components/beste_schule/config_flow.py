@@ -33,6 +33,16 @@ OPTION_KEYS = (
 )
 
 
+def _options_schema(options: dict[str, bool]) -> vol.Schema:
+    """Return the shared feature options schema."""
+    return vol.Schema(
+        {
+            vol.Required(key, default=options[key]): bool
+            for key in OPTION_KEYS
+        }
+    )
+
+
 def _value_from_keys(data: dict[str, Any], keys: tuple[str, ...]) -> str | None:
     """Return the first non-empty string value for any key."""
     for key in keys:
@@ -101,6 +111,9 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    _token: str
+    _title: str
+
     @staticmethod
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
@@ -124,11 +137,9 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id("beste_schule")
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(
-                    title=title,
-                    data={CONF_TOKEN: user_input[CONF_TOKEN]},
-                    options=DEFAULT_OPTIONS,
-                )
+                self._token = user_input[CONF_TOKEN]
+                self._title = title
+                return await self.async_step_features()
 
         schema = vol.Schema(
             {
@@ -139,6 +150,22 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=schema,
             errors=errors,
+        )
+
+    async def async_step_features(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Let the user choose optional entities during setup."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title=self._title,
+                data={CONF_TOKEN: self._token},
+                options=user_input,
+            )
+
+        return self.async_show_form(
+            step_id="features",
+            data_schema=_options_schema(DEFAULT_OPTIONS),
         )
 
 
@@ -156,10 +183,7 @@ class BesteSchuleOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         options = {**DEFAULT_OPTIONS, **self._config_entry.options}
-        schema = vol.Schema(
-            {
-                vol.Required(key, default=options[key]): bool
-                for key in OPTION_KEYS
-            }
+        return self.async_show_form(
+            step_id="init",
+            data_schema=_options_schema(options),
         )
-        return self.async_show_form(step_id="init", data_schema=schema)

@@ -10,6 +10,24 @@
         "data_description": {
           "token": "Der Token aus dem Bereich API im beste.schule-Benutzerkonto."
         }
+      },
+      "features": {
+        "title": "beste.schule Funktionen",
+        "description": "Wähle aus, welche optionalen Entitäten erstellt werden sollen.",
+        "data": {
+          "enable_timetable_calendar": "Stundenplan-Kalender",
+          "enable_absence_calendar": "Abwesenheiten-Kalender",
+          "enable_homework_calendar": "Hausaufgaben-Kalender",
+          "enable_exam_calendar": "Arbeiten-Kalender",
+          "enable_homework_todo": "Hausaufgaben-To-do-Liste"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Erstellt einen Home-Assistant-Kalender für Unterrichtsstunden.",
+          "enable_absence_calendar": "Erstellt einen Home-Assistant-Kalender für Abwesenheiten.",
+          "enable_homework_calendar": "Erstellt einen Home-Assistant-Kalender für Hausaufgaben.",
+          "enable_exam_calendar": "Erstellt einen Home-Assistant-Kalender für Arbeiten, LK und Tests.",
+          "enable_homework_todo": "Erstellt eine Home-Assistant-To-do-Liste für Hausaufgaben."
+        }
       }
     },
     "error": {
