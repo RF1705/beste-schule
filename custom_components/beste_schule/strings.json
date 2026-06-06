@@ -29,6 +29,7 @@
           "enable_timetable_calendar": "Timetable calendar",
           "enable_absence_calendar": "Absence calendar",
           "enable_homework_calendar": "Homework calendar",
+          "enable_exam_calendar": "Exam calendar",
           "enable_homework_todo": "Homework to-do list"
         }
       }
@@ -61,6 +62,9 @@
       },
       "homework": {
         "name": "Homework"
+      },
+      "exams": {
+        "name": "Exams"
       }
     },
     "todo": {

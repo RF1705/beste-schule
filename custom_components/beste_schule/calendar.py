@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_ENABLE_ABSENCE_CALENDAR,
+    CONF_ENABLE_EXAM_CALENDAR,
     CONF_ENABLE_HOMEWORK_CALENDAR,
     CONF_ENABLE_TIMETABLE_CALENDAR,
     DEFAULT_OPTIONS,
@@ -121,6 +122,8 @@ async def async_setup_entry(
         entities.append(BesteSchuleAbsenceCalendar(entry, coordinator))
     if options[CONF_ENABLE_HOMEWORK_CALENDAR]:
         entities.append(BesteSchuleHomeworkCalendar(entry, coordinator))
+    if options[CONF_ENABLE_EXAM_CALENDAR]:
+        entities.append(BesteSchuleExamCalendar(entry, coordinator))
     async_add_entities(entities)
 
 
@@ -584,8 +587,15 @@ def _lesson_events(
                         )
                     )
 
-    events.sort(key=lambda event: event.start)
+    events.sort(key=lambda event: _event_sort_value(event.start))
     return events
+
+
+def _event_sort_value(value: date | datetime) -> datetime:
+    """Return a datetime for sorting calendar events with mixed date types."""
+    if isinstance(value, datetime):
+        return value
+    return datetime.combine(value, time.min)
 
 
 def _cached_lesson_events(
@@ -628,7 +638,7 @@ def _cached_lesson_events(
         for event in cache.values()
         if event.end > visible_start and event.start < visible_end
     ]
-    events.sort(key=lambda event: event.start)
+    events.sort(key=lambda event: _event_sort_value(event.start))
     return events
 
 
@@ -819,6 +829,179 @@ def _homework_title(subject: str | None, description: str | None) -> str:
     return "Hausaufgabe"
 
 
+def _exam_events(
+    data: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+) -> list[CalendarEvent]:
+    """Convert visible classwork journal notes into calendar events."""
+    events: list[CalendarEvent] = []
+    seen: set[str] = set()
+    school_name = school_name_from_data(data)
+    period_map = _period_time_map(data)
+
+    for entry in _exam_entries(data, start_date, end_date):
+        key = entry["key"]
+        if key in seen:
+            continue
+        seen.add(key)
+
+        exam_date = entry["date"]
+        number = entry["number"]
+        start_time = entry["start_time"]
+        end_time = entry["end_time"]
+        if start_time is None or end_time is None:
+            try:
+                start_time, end_time = period_map[int(number)]
+            except (KeyError, TypeError, ValueError):
+                pass
+
+        description_parts = []
+        if entry["description"]:
+            description_parts.append(entry["description"])
+        if entry["room"]:
+            description_parts.append(f"Raum: {entry['room']}")
+        if entry["teacher"]:
+            description_parts.append(f"Lehrer: {entry['teacher']}")
+        if entry["note_type"]:
+            description_parts.append(f"Typ: {entry['note_type']}")
+
+        if start_time is not None and end_time is not None:
+            event_start: date | datetime = datetime.combine(exam_date, start_time)
+            event_end: date | datetime = datetime.combine(exam_date, end_time)
+        else:
+            event_start = exam_date
+            event_end = exam_date + timedelta(days=1)
+
+        events.append(
+            CalendarEvent(
+                summary=entry["title"],
+                start=event_start,
+                end=event_end,
+                location=school_name,
+                description="\n\n".join(description_parts) or None,
+            )
+        )
+
+    events.sort(key=lambda event: _event_sort_value(event.start))
+    return events
+
+
+def _exam_entries(
+    data: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+) -> list[dict[str, Any]]:
+    """Return classwork-like journal notes as stable internal items."""
+    entries: list[dict[str, Any]] = []
+    for source_key in ("journal_lessons", "journal_weeks", "journal_lesson_student"):
+        for item in _iter_values(data.get(source_key)):
+            if not isinstance(item, dict):
+                continue
+
+            note_date = _note_date(item)
+            notes = item.get("notes")
+            if note_date is None or not isinstance(notes, list):
+                continue
+
+            if note_date < start_date.date() or note_date >= end_date.date():
+                continue
+
+            subject = _find_nested_text(
+                item,
+                ("subject", "subjects", "subjectName", "subject_name"),
+            )
+            number = _find_value(item, LESSON_NR_KEYS)
+            start_time = _parse_time(_find_value(item, START_KEYS))
+            end_time = _parse_time(_find_value(item, END_KEYS))
+            room = _find_nested_relation_text(item, ROOM_KEYS, _room_text)
+            teacher = _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text)
+            for note in notes:
+                if not isinstance(note, dict) or not _is_exam_note(note):
+                    continue
+
+                description = _extract_text(note.get("description"))
+                note_type = _note_type_name(note)
+                title = _exam_title(subject, note_type, description)
+                key = _exam_event_key(
+                    note,
+                    note_date,
+                    title,
+                    description,
+                )
+                entries.append(
+                    {
+                        "key": key,
+                        "title": title,
+                        "date": note_date,
+                        "number": number,
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "room": room,
+                        "teacher": teacher,
+                        "note_type": note_type,
+                        "description": description,
+                    }
+                )
+
+    entries.sort(key=lambda entry: (entry["date"], entry["number"] or 99, entry["title"]))
+    return entries
+
+
+def _is_exam_note(note: dict[str, Any]) -> bool:
+    """Return whether a journal note looks like classwork or an exam."""
+    note_type = (_note_type_name(note) or "").lower()
+    description = (_extract_text(note.get("description")) or "").lower()
+    text = f"{note_type} {description}"
+    markers = (
+        "klassenarbeit",
+        "leistungskontrolle",
+        " lk",
+        "lk ",
+        "kurztest",
+        "test",
+        "arbeit",
+        "exam",
+        "classwork",
+    )
+    return note_type == "lk" or any(marker in text for marker in markers)
+
+
+def _note_type_name(note: dict[str, Any]) -> str | None:
+    """Return a readable note type name."""
+    note_type = note.get("type")
+    if isinstance(note_type, dict):
+        return _extract_text(note_type.get("name"))
+    return _extract_text(note_type)
+
+
+def _exam_title(
+    subject: str | None,
+    note_type: str | None,
+    description: str | None,
+) -> str:
+    """Return a concise exam event title."""
+    label = note_type or "Arbeit"
+    if subject:
+        return f"{label}: {subject}"
+    if description:
+        first_line = description.splitlines()[0].strip()
+        if first_line:
+            return first_line[:80]
+    return label
+
+
+def _exam_event_key(
+    note: dict[str, Any],
+    note_date: date,
+    title: str,
+    description: str | None,
+) -> str:
+    """Build a stable duplicate-detection key for exam notes."""
+    description_key = " ".join((description or "").split())
+    return f"content:{note_date.isoformat()}|{title}|{description_key}"
+
+
 class BesteSchuleTimetableCalendar(
     CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
 ):
@@ -938,3 +1121,42 @@ class BesteSchuleHomeworkCalendar(
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         return _homework_events(self.coordinator.data, start_date, end_date)
+
+
+class BesteSchuleExamCalendar(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
+):
+    """Calendar for visible beste.schule classwork entries."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "exams"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_exams"
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        """Return the current or next upcoming event."""
+        now = dt_util.now()
+        events = _exam_events(self.coordinator.data, now, now + timedelta(days=90))
+        return events[0] if events else None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        """Return calendar events within a datetime range."""
+        return _exam_events(self.coordinator.data, start_date, end_date)

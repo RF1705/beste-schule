@@ -29,6 +29,7 @@
           "enable_timetable_calendar": "Stundenplan-Kalender",
           "enable_absence_calendar": "Abwesenheiten-Kalender",
           "enable_homework_calendar": "Hausaufgaben-Kalender",
+          "enable_exam_calendar": "Arbeiten-Kalender",
           "enable_homework_todo": "Hausaufgaben-To-do-Liste"
         }
       }
@@ -61,6 +62,9 @@
       },
       "homework": {
         "name": "Hausaufgaben"
+      },
+      "exams": {
+        "name": "Arbeiten"
       }
     },
     "todo": {

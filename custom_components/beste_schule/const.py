@@ -8,6 +8,7 @@ CONF_SCHOOL_NAME = "school_name"
 CONF_ENABLE_TIMETABLE_CALENDAR = "enable_timetable_calendar"
 CONF_ENABLE_ABSENCE_CALENDAR = "enable_absence_calendar"
 CONF_ENABLE_HOMEWORK_CALENDAR = "enable_homework_calendar"
+CONF_ENABLE_EXAM_CALENDAR = "enable_exam_calendar"
 CONF_ENABLE_HOMEWORK_TODO = "enable_homework_todo"
 DEFAULT_NAME = "beste.schule"
 
@@ -17,5 +18,6 @@ DEFAULT_OPTIONS = {
     CONF_ENABLE_TIMETABLE_CALENDAR: True,
     CONF_ENABLE_ABSENCE_CALENDAR: True,
     CONF_ENABLE_HOMEWORK_CALENDAR: True,
+    CONF_ENABLE_EXAM_CALENDAR: True,
     CONF_ENABLE_HOMEWORK_TODO: True,
 }
