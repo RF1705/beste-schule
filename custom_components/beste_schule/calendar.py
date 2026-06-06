@@ -898,7 +898,7 @@ def _exam_entries(
 ) -> list[dict[str, Any]]:
     """Return classwork-like journal notes as stable internal items."""
     entries: list[dict[str, Any]] = []
-    for source_key in ("journal_lessons", "journal_weeks", "journal_lesson_student"):
+    for source_key in _exam_source_keys(data):
         for item in _iter_values(data.get(source_key)):
             if not isinstance(item, dict):
                 continue
@@ -950,6 +950,16 @@ def _exam_entries(
 
     entries.sort(key=lambda entry: (entry["date"], entry["number"] or 99, entry["title"]))
     return entries
+
+
+def _exam_source_keys(data: dict[str, Any]) -> tuple[str, ...]:
+    """Return journal sources for exams, preferring the compact future range."""
+    journal_lessons = data.get("journal_lessons")
+    if journal_lessons is not None and not (
+        isinstance(journal_lessons, dict) and "error" in journal_lessons
+    ):
+        return ("journal_lessons",)
+    return ("journal_weeks", "journal_lesson_student")
 
 
 def _is_exam_note(note: dict[str, Any]) -> bool:
