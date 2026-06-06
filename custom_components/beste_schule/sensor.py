@@ -50,7 +50,6 @@ async def async_setup_entry(
         [
             BesteSchuleSickDaysSensor(entry, coordinator),
             BesteSchuleClassSensor(entry, coordinator),
-            BesteSchuleTimetableCardSensor(entry, coordinator),
             BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
             BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
             *[
