@@ -15,11 +15,13 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 - Timetable calendar with lessons from beste.schule
 - Absence calendar with all-day absence events
 - Homework calendar beta from visible journal notes
+- Homework to-do list beta from visible journal notes
 - School time binary sensor
 - Current lesson and next lesson sensors
 - Grade average sensors per subject
 - Class sensor
 - Beta timetable JSON sensor for `fabel-smith/stundenplan-card`
+- Options to enable or disable calendars and the homework to-do list
 - English and German translations
 
 ## Installation with HACS
@@ -67,6 +69,7 @@ The integration currently creates:
 - `calendar`: timetable
 - `calendar`: absences
 - `calendar`: homework
+- `todo`: homework
 - `binary_sensor`: school time
 - `sensor`: current lesson
 - `sensor`: next lesson

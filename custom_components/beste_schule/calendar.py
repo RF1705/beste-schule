@@ -15,7 +15,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import (
+    CONF_ENABLE_ABSENCE_CALENDAR,
+    CONF_ENABLE_HOMEWORK_CALENDAR,
+    CONF_ENABLE_TIMETABLE_CALENDAR,
+    DEFAULT_OPTIONS,
+    DOMAIN,
+)
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info, school_name_from_data
 
@@ -107,13 +113,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up beste.schule calendars."""
     coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [
-            BesteSchuleTimetableCalendar(entry, coordinator),
-            BesteSchuleAbsenceCalendar(entry, coordinator),
-            BesteSchuleHomeworkCalendar(entry, coordinator),
-        ]
-    )
+    options = {**DEFAULT_OPTIONS, **entry.options}
+    entities: list[CalendarEntity] = []
+    if options[CONF_ENABLE_TIMETABLE_CALENDAR]:
+        entities.append(BesteSchuleTimetableCalendar(entry, coordinator))
+    if options[CONF_ENABLE_ABSENCE_CALENDAR]:
+        entities.append(BesteSchuleAbsenceCalendar(entry, coordinator))
+    if options[CONF_ENABLE_HOMEWORK_CALENDAR]:
+        entities.append(BesteSchuleHomeworkCalendar(entry, coordinator))
+    async_add_entities(entities)
 
 
 def _iter_values(value: Any) -> Iterable[dict[str, Any]]:
@@ -692,7 +700,27 @@ def _homework_events(
     end_date: datetime,
 ) -> list[CalendarEvent]:
     """Convert visible homework journal notes into all-day calendar events."""
-    events: list[CalendarEvent] = []
+    events = [
+        CalendarEvent(
+            summary=entry["title"],
+            start=entry["date"],
+            end=entry["date"] + timedelta(days=1),
+            location=entry["location"],
+            description=entry["description"],
+        )
+        for entry in _homework_entries(data, start_date, end_date)
+    ]
+    events.sort(key=lambda event: event.start)
+    return events
+
+
+def _homework_entries(
+    data: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+) -> list[dict[str, Any]]:
+    """Return visible homework notes as stable internal items."""
+    entries: list[dict[str, Any]] = []
     seen: set[str] = set()
     school_name = school_name_from_data(data)
 
@@ -725,18 +753,18 @@ def _homework_events(
                 if key in seen:
                     continue
                 seen.add(key)
-                events.append(
-                    CalendarEvent(
-                        summary=title,
-                        start=event_start,
-                        end=event_end,
-                        location=school_name,
-                        description=description,
-                    )
+                entries.append(
+                    {
+                        "key": key,
+                        "title": title,
+                        "date": event_start,
+                        "location": school_name,
+                        "description": description,
+                    }
                 )
 
-    events.sort(key=lambda event: event.start)
-    return events
+    entries.sort(key=lambda entry: (entry["date"], entry["title"]))
+    return entries
 
 
 def _homework_event_key(

@@ -27,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(
         entry, [Platform(platform) for platform in PLATFORMS]
     )
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     _async_update_device_info(hass, entry, coordinator)
     return True
 
@@ -67,3 +68,8 @@ def _async_update_device_info(
         manufacturer="beste.schule",
         model=school_name,
     )
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload beste.schule when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)

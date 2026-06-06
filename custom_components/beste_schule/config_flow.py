@@ -10,7 +10,25 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 
 from .api import BesteSchuleApi, BesteSchuleApiError, BesteSchuleAuthError
-from .const import CONF_TOKEN, DEFAULT_API_URL, DEFAULT_NAME, DOMAIN
+from .const import (
+    CONF_ENABLE_ABSENCE_CALENDAR,
+    CONF_ENABLE_HOMEWORK_CALENDAR,
+    CONF_ENABLE_HOMEWORK_TODO,
+    CONF_ENABLE_TIMETABLE_CALENDAR,
+    CONF_TOKEN,
+    DEFAULT_API_URL,
+    DEFAULT_NAME,
+    DEFAULT_OPTIONS,
+    DOMAIN,
+)
+
+
+OPTION_KEYS = (
+    CONF_ENABLE_TIMETABLE_CALENDAR,
+    CONF_ENABLE_ABSENCE_CALENDAR,
+    CONF_ENABLE_HOMEWORK_CALENDAR,
+    CONF_ENABLE_HOMEWORK_TODO,
+)
 
 
 def _value_from_keys(data: dict[str, Any], keys: tuple[str, ...]) -> str | None:
@@ -81,6 +99,13 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Create the options flow."""
+        return BesteSchuleOptionsFlow(config_entry)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
@@ -100,6 +125,7 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title=title,
                     data={CONF_TOKEN: user_input[CONF_TOKEN]},
+                    options=DEFAULT_OPTIONS,
                 )
 
         schema = vol.Schema(
@@ -112,3 +138,26 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
         )
+
+
+class BesteSchuleOptionsFlow(config_entries.OptionsFlow):
+    """Handle options for beste.schule."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self._config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage beste.schule options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        options = {**DEFAULT_OPTIONS, **self._config_entry.options}
+        schema = vol.Schema(
+            {
+                vol.Required(key, default=options[key]): bool
+                for key in OPTION_KEYS
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

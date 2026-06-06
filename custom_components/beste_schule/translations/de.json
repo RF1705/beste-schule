@@ -20,6 +20,20 @@
       "already_configured": "beste.schule ist bereits eingerichtet."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "beste.schule Optionen",
+        "description": "Wähle aus, welche optionalen Entitäten erstellt werden sollen.",
+        "data": {
+          "enable_timetable_calendar": "Stundenplan-Kalender",
+          "enable_absence_calendar": "Abwesenheiten-Kalender",
+          "enable_homework_calendar": "Hausaufgaben-Kalender",
+          "enable_homework_todo": "Hausaufgaben-To-do-Liste"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "sick_days": {
@@ -45,6 +59,11 @@
       "absences": {
         "name": "Abwesenheiten"
       },
+      "homework": {
+        "name": "Hausaufgaben"
+      }
+    },
+    "todo": {
       "homework": {
         "name": "Hausaufgaben"
       }
