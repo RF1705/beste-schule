@@ -53,15 +53,19 @@ class BesteSchuleAtSchoolBinarySensor(
         return is_at_school(self.coordinator)
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | None]:
+    def extra_state_attributes(self) -> dict[str, str]:
         """Return current lesson details."""
         current = current_lesson(self.coordinator)
         first_lesson, last_lesson = school_day_bounds(self.coordinator)
-        return {
-            "current_lesson": current.summary if current else None,
-            "current_location": current.location if current else None,
-            "current_start": current.start.isoformat() if current else None,
-            "current_end": current.end.isoformat() if current else None,
-            "school_day_start": first_lesson.start.isoformat() if first_lesson else None,
-            "school_day_end": last_lesson.end.isoformat() if last_lesson else None,
-        }
+        attributes: dict[str, str] = {}
+        if current is not None:
+            attributes["current_lesson"] = current.summary
+            if current.location:
+                attributes["current_location"] = current.location
+            attributes["current_start"] = current.start.isoformat()
+            attributes["current_end"] = current.end.isoformat()
+        if first_lesson is not None:
+            attributes["school_day_start"] = first_lesson.start.isoformat()
+        if last_lesson is not None:
+            attributes["school_day_end"] = last_lesson.end.isoformat()
+        return attributes
