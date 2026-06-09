@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.util import dt as dt_util
 
 from .api import BesteSchuleApi
 from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
@@ -21,6 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_TOKEN],
     )
     coordinator = BesteSchuleDataUpdateCoordinator(hass, api)
+    coordinator.timetable_cache_start = _entry_created_at(entry) or dt_util.now()
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -73,3 +75,13 @@ def _async_update_device_info(
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload beste.schule when options change."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _entry_created_at(entry: ConfigEntry):
+    """Return the config entry creation time when Home Assistant provides it."""
+    created_at = getattr(entry, "created_at", None)
+    if created_at is None:
+        return None
+    if created_at.tzinfo is None:
+        return dt_util.as_local(created_at)
+    return created_at

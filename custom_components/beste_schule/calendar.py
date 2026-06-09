@@ -615,23 +615,21 @@ def _cached_lesson_events(
     if not hasattr(coordinator, "timetable_event_cache"):
         coordinator.timetable_event_cache = cache
 
-    refresh_start = max(cache_start, now.replace(hour=0, minute=0, second=0, microsecond=0))
-    if refresh_start < horizon:
-        cache_keys = [
-            key
-            for key, event in cache.items()
-            if event.start >= refresh_start and event.start < horizon
-        ]
-        for key in cache_keys:
-            cache.pop(key, None)
-
-        for event in _lesson_events(coordinator.data, refresh_start, horizon):
-            cache[_cache_key(event)] = event
-
     visible_start = max(start_date, cache_start)
     visible_end = min(end_date, horizon)
     if visible_start >= visible_end:
         return []
+
+    cache_keys = [
+        key
+        for key, event in cache.items()
+        if event.end > visible_start and event.start < visible_end
+    ]
+    for key in cache_keys:
+        cache.pop(key, None)
+
+    for event in _lesson_events(coordinator.data, visible_start, visible_end):
+        cache[_cache_key(event)] = event
 
     events = [
         event
