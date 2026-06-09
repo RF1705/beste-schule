@@ -359,6 +359,24 @@ def _event_cell_text(event: Any) -> str:
     return "\n".join(part for part in parts if part)
 
 
+def _event_cell_style(event: Any) -> dict[str, Any] | None:
+    """Return stundenplan-card cell styling for special lesson states."""
+    description = event.description or ""
+    if event.summary.startswith("Ausfall:"):
+        return {
+            "bg": "#d32f2f",
+            "bg_alpha": 0.82,
+            "color": "#ffffff",
+        }
+    if "Vertretung für:" in description:
+        return {
+            "bg": "#3159e7",
+            "bg_alpha": 0.82,
+            "color": "#ffffff",
+        }
+    return None
+
+
 def _timetable_card_rows(
     coordinator: BesteSchuleDataUpdateCoordinator,
     week_offset: int,
@@ -406,12 +424,9 @@ def _timetable_card_rows(
         day_key = _weekday_key(weekday)
         cell = _event_cell_text(event)
         row[day_key] = f"{row[day_key]}\n\n{cell}".strip() if row[day_key] else cell
-        if event.summary.startswith("Ausfall:"):
-            row["cell_styles"][weekday] = {
-                "bg": "#ff5252",
-                "bg_alpha": 0.18,
-                "color": "#ffebee",
-            }
+        style = _event_cell_style(event)
+        if style:
+            row["cell_styles"][weekday] = style
 
     return [
         {
