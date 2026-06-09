@@ -21,7 +21,7 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 - Current lesson and next lesson sensors
 - Grade average sensors per subject
 - Class sensor
-- Beta timetable JSON sensor for `fabel-smith/stundenplan-card`
+- Timetable JSON sensor for `fabel-smith/stundenplan-card`
 - Options to enable or disable calendars and the homework to-do list
 - English and German translations
 
@@ -76,12 +76,12 @@ The integration currently creates:
 - `sensor`: current lesson
 - `sensor`: next lesson
 - `sensor`: class
-- `sensor`: timetable card beta data
+- `sensor`: timetable card data
 - `sensor`: grade average per subject
 
 ### stundenplan-card compatibility
 
-The `0.4` beta releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through JSON source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
+The `0.4` releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through JSON source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
 
 Use the `Timetable card` sensor from this integration in the card:
 

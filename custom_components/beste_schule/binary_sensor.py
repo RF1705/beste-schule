@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator
 from .entity import besteschule_device_info
-from .presence import current_lesson, is_at_school
+from .presence import current_lesson, is_at_school, school_day_bounds
 
 
 async def async_setup_entry(
@@ -49,16 +49,19 @@ class BesteSchuleAtSchoolBinarySensor(
 
     @property
     def is_on(self) -> bool:
-        """Return whether a lesson is currently active and no absence covers today."""
+        """Return whether the current time is inside today's school day."""
         return is_at_school(self.coordinator)
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
         """Return current lesson details."""
         current = current_lesson(self.coordinator)
+        first_lesson, last_lesson = school_day_bounds(self.coordinator)
         return {
             "current_lesson": current.summary if current else None,
             "current_location": current.location if current else None,
             "current_start": current.start.isoformat() if current else None,
             "current_end": current.end.isoformat() if current else None,
+            "school_day_start": first_lesson.start.isoformat() if first_lesson else None,
+            "school_day_end": last_lesson.end.isoformat() if last_lesson else None,
         }
