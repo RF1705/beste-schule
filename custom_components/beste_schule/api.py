@@ -106,8 +106,7 @@ class BesteSchuleApi:
             except BesteSchuleApiError as err:
                 data[key] = {"error": str(err)}
 
-        range_start = dt_util.now().date() - timedelta(days=7)
-        range_end = dt_util.now().date() + timedelta(days=60)
+        substitution_range_start = dt_util.now().date()
         homework_range_start = dt_util.now().date()
         homework_range_end = dt_util.now().date() + timedelta(days=21)
         student_id = _first_student_id(data.get("students"))
@@ -144,8 +143,8 @@ class BesteSchuleApi:
                 "substitution-plans/days",
                 {
                     "include": "lessons,subject,teachers,rooms,notes",
-                    "filter[range]": f"{range_start.isoformat()},{range_end.isoformat()}",
-                    "per_page": 100,
+                    "filter[range]": f"{substitution_range_start.isoformat()},60",
+                    "per_page": 250,
                 },
             ),
             "grades": (

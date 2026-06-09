@@ -290,6 +290,15 @@ def _find_value(item: dict[str, Any], keys: tuple[str, ...]) -> Any:
     return None
 
 
+def _find_direct_value(item: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    """Find a scalar value for any key at the current level only."""
+    for key in keys:
+        value = item.get(key)
+        if isinstance(value, (str, int, float)):
+            return value
+    return None
+
+
 def _parse_weekday(value: Any) -> int | None:
     """Parse a weekday into Python's Monday=0 format."""
     if isinstance(value, str):
@@ -442,8 +451,11 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
         if not isinstance(item, dict):
             continue
 
+        number = _find_direct_value(item, LESSON_NR_KEYS)
+        if number is None:
+            continue
+
         day = _parse_date(_find_value(item, DATE_KEYS))
-        number = _find_value(item, LESSON_NR_KEYS)
         if day is None or number is None:
             continue
 
@@ -469,6 +481,19 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
                 "teacher": _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text),
                 "notes": _extract_text(item.get("notes")),
             }
+        else:
+            title = _find_nested_text(item, TITLE_KEYS)
+            location = _find_nested_relation_text(item, ROOM_KEYS, _room_text)
+            teacher = _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text)
+            notes = _extract_text(item.get("notes"))
+            if title or location or teacher or notes:
+                overlay[key] = {
+                    "status": "substitution",
+                    "title": title,
+                    "location": location,
+                    "teacher": teacher,
+                    "notes": notes,
+                }
     return overlay
 
 
