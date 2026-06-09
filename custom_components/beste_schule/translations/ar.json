@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "إعداد beste.schule",
+        "description": "تحتاج إلى Personal Access Token من حسابك في beste.schule.\n\nطريقة الحصول عليه:\n1. سجّل الدخول إلى beste.schule.\n2. افتح حساب المستخدم من اسمك في أعلى اليمين.\n3. اختر API من القائمة اليسرى.\n4. أنشئ رمزاً جديداً تحت Personal Access Token.\n5. انسخ الرمز والصقه هنا.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "الرمز من قسم API في حساب beste.schule."
+        }
+      },
+      "features": {
+        "title": "ميزات beste.schule",
+        "description": "اختر الكيانات الاختيارية التي سيتم إنشاؤها.",
+        "data": {
+          "enable_timetable_calendar": "تقويم الجدول الدراسي",
+          "enable_absence_calendar": "تقويم الغياب",
+          "enable_homework_calendar": "تقويم الواجبات",
+          "enable_exam_calendar": "تقويم الاختبارات",
+          "enable_homework_todo": "قائمة مهام الواجبات"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "ينشئ تقويماً في Home Assistant للحصص.",
+          "enable_absence_calendar": "ينشئ تقويماً في Home Assistant للغيابات.",
+          "enable_homework_calendar": "ينشئ تقويماً في Home Assistant للواجبات.",
+          "enable_exam_calendar": "ينشئ تقويماً في Home Assistant للاختبارات والأعمال الصفية.",
+          "enable_homework_todo": "ينشئ قائمة مهام في Home Assistant للواجبات."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "تعذر الوصول إلى API أو التحقق منها بشكل موثوق. يرجى التحقق من اتصال الإنترنت.",
+      "invalid_auth": "رفضت beste.schule الرمز. يرجى إنشاء Personal Access Token جديد ولصقه كاملاً."
+    },
+    "abort": {
+      "already_configured": "تم إعداد beste.schule مسبقاً."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "خيارات beste.schule",
+        "description": "اختر الكيانات الاختيارية التي سيتم إنشاؤها.",
+        "data": {
+          "enable_timetable_calendar": "تقويم الجدول الدراسي",
+          "enable_absence_calendar": "تقويم الغياب",
+          "enable_homework_calendar": "تقويم الواجبات",
+          "enable_exam_calendar": "تقويم الاختبارات",
+          "enable_homework_todo": "قائمة مهام الواجبات"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "ينشئ تقويماً في Home Assistant للحصص.",
+          "enable_absence_calendar": "ينشئ تقويماً في Home Assistant للغيابات.",
+          "enable_homework_calendar": "ينشئ تقويماً في Home Assistant للواجبات.",
+          "enable_exam_calendar": "ينشئ تقويماً في Home Assistant للاختبارات والأعمال الصفية.",
+          "enable_homework_todo": "ينشئ قائمة مهام في Home Assistant للواجبات."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "أيام المرض"
+      },
+      "school_class": {
+        "name": "الصف"
+      },
+      "timetable_card": {
+        "name": "بطاقة الجدول الدراسي"
+      },
+      "current_lesson": {
+        "name": "الحصة الحالية"
+      },
+      "next_lesson": {
+        "name": "الحصة التالية"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "الجدول الدراسي"
+      },
+      "absences": {
+        "name": "الغيابات"
+      },
+      "homework": {
+        "name": "الواجبات"
+      },
+      "exams": {
+        "name": "الاختبارات"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "الواجبات"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "وقت المدرسة"
+      }
+    }
+  }
+}

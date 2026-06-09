@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurare beste.schule",
+        "description": "Ai nevoie de un Personal Access Token din contul tău beste.schule.\n\nCum îl obții:\n1. Autentifică-te în beste.schule.\n2. Deschide contul de utilizator din numele tău din dreapta sus.\n3. Selectează API din meniul din stânga.\n4. Creează un token nou la Personal Access Token.\n5. Copiază tokenul și lipește-l aici.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "Tokenul din secțiunea API a contului beste.schule."
+        }
+      },
+      "features": {
+        "title": "Funcții beste.schule",
+        "description": "Alege ce entități opționale vor fi create.",
+        "data": {
+          "enable_timetable_calendar": "Calendar orar",
+          "enable_absence_calendar": "Calendar absențe",
+          "enable_homework_calendar": "Calendar teme",
+          "enable_exam_calendar": "Calendar teste",
+          "enable_homework_todo": "Listă de teme"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Creează un calendar Home Assistant pentru lecții.",
+          "enable_absence_calendar": "Creează un calendar Home Assistant pentru absențe.",
+          "enable_homework_calendar": "Creează un calendar Home Assistant pentru teme.",
+          "enable_exam_calendar": "Creează un calendar Home Assistant pentru teste și lucrări.",
+          "enable_homework_todo": "Creează o listă de sarcini Home Assistant pentru teme."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "API-ul nu a putut fi accesat sau verificat sigur. Verifică conexiunea la internet.",
+      "invalid_auth": "beste.schule a respins tokenul. Creează un Personal Access Token nou și lipește-l complet."
+    },
+    "abort": {
+      "already_configured": "beste.schule este deja configurat."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opțiuni beste.schule",
+        "description": "Alege ce entități opționale vor fi create.",
+        "data": {
+          "enable_timetable_calendar": "Calendar orar",
+          "enable_absence_calendar": "Calendar absențe",
+          "enable_homework_calendar": "Calendar teme",
+          "enable_exam_calendar": "Calendar teste",
+          "enable_homework_todo": "Listă de teme"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Creează un calendar Home Assistant pentru lecții.",
+          "enable_absence_calendar": "Creează un calendar Home Assistant pentru absențe.",
+          "enable_homework_calendar": "Creează un calendar Home Assistant pentru teme.",
+          "enable_exam_calendar": "Creează un calendar Home Assistant pentru teste și lucrări.",
+          "enable_homework_todo": "Creează o listă de sarcini Home Assistant pentru teme."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Zile de boală"
+      },
+      "school_class": {
+        "name": "Clasă"
+      },
+      "timetable_card": {
+        "name": "Card orar"
+      },
+      "current_lesson": {
+        "name": "Lecția curentă"
+      },
+      "next_lesson": {
+        "name": "Lecția următoare"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Orar"
+      },
+      "absences": {
+        "name": "Absențe"
+      },
+      "homework": {
+        "name": "Teme"
+      },
+      "exams": {
+        "name": "Teste"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Teme"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Timp școlar"
+      }
+    }
+  }
+}

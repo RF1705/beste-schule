@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Налаштування beste.schule",
+        "description": "Потрібен Personal Access Token з вашого облікового запису beste.schule.\n\nЯк його отримати:\n1. Увійдіть у beste.schule.\n2. Відкрийте обліковий запис через своє ім'я у правому верхньому куті.\n3. Виберіть API у лівому меню.\n4. Створіть новий токен у розділі Personal Access Token.\n5. Скопіюйте токен і вставте його тут.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "Токен з розділу API в обліковому записі beste.schule."
+        }
+      },
+      "features": {
+        "title": "Функції beste.schule",
+        "description": "Виберіть, які додаткові сутності створити.",
+        "data": {
+          "enable_timetable_calendar": "Календар розкладу",
+          "enable_absence_calendar": "Календар відсутностей",
+          "enable_homework_calendar": "Календар домашніх завдань",
+          "enable_exam_calendar": "Календар контрольних",
+          "enable_homework_todo": "Список домашніх завдань"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Створює календар Home Assistant для уроків.",
+          "enable_absence_calendar": "Створює календар Home Assistant для відсутностей.",
+          "enable_homework_calendar": "Створює календар Home Assistant для домашніх завдань.",
+          "enable_exam_calendar": "Створює календар Home Assistant для іспитів і контрольних робіт.",
+          "enable_homework_todo": "Створює список завдань Home Assistant для домашніх завдань."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Не вдалося підключитися до API або надійно його перевірити. Перевірте інтернет-з'єднання.",
+      "invalid_auth": "beste.schule відхилила токен. Створіть новий Personal Access Token і вставте його повністю."
+    },
+    "abort": {
+      "already_configured": "beste.schule вже налаштовано."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Параметри beste.schule",
+        "description": "Виберіть, які додаткові сутності створити.",
+        "data": {
+          "enable_timetable_calendar": "Календар розкладу",
+          "enable_absence_calendar": "Календар відсутностей",
+          "enable_homework_calendar": "Календар домашніх завдань",
+          "enable_exam_calendar": "Календар контрольних",
+          "enable_homework_todo": "Список домашніх завдань"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Створює календар Home Assistant для уроків.",
+          "enable_absence_calendar": "Створює календар Home Assistant для відсутностей.",
+          "enable_homework_calendar": "Створює календар Home Assistant для домашніх завдань.",
+          "enable_exam_calendar": "Створює календар Home Assistant для іспитів і контрольних робіт.",
+          "enable_homework_todo": "Створює список завдань Home Assistant для домашніх завдань."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Дні хвороби"
+      },
+      "school_class": {
+        "name": "Клас"
+      },
+      "timetable_card": {
+        "name": "Картка розкладу"
+      },
+      "current_lesson": {
+        "name": "Поточний урок"
+      },
+      "next_lesson": {
+        "name": "Наступний урок"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Розклад"
+      },
+      "absences": {
+        "name": "Відсутності"
+      },
+      "homework": {
+        "name": "Домашні завдання"
+      },
+      "exams": {
+        "name": "Контрольні"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Домашні завдання"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Шкільний час"
+      }
+    }
+  }
+}

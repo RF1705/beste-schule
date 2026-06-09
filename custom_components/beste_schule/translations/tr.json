@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "beste.schule kurulumu",
+        "description": "beste.schule kullanıcı hesabınızdan bir Personal Access Token gerekir.\n\nNasıl alınır:\n1. beste.schule'de oturum açın.\n2. Sağ üstte adınıza tıklayıp kullanıcı hesabınızı açın.\n3. Soldaki menüden API bölümünü seçin.\n4. Personal Access Token altında yeni bir token oluşturun.\n5. Tokeni kopyalayıp buraya yapıştırın.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "beste.schule kullanıcı hesabındaki API bölümünden alınan token."
+        }
+      },
+      "features": {
+        "title": "beste.schule özellikleri",
+        "description": "Hangi isteğe bağlı varlıkların oluşturulacağını seçin.",
+        "data": {
+          "enable_timetable_calendar": "Ders programı takvimi",
+          "enable_absence_calendar": "Devamsızlık takvimi",
+          "enable_homework_calendar": "Ödev takvimi",
+          "enable_exam_calendar": "Sınav takvimi",
+          "enable_homework_todo": "Ödev yapılacaklar listesi"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Dersler için bir Home Assistant takvimi oluşturur.",
+          "enable_absence_calendar": "Devamsızlıklar için bir Home Assistant takvimi oluşturur.",
+          "enable_homework_calendar": "Ödevler için bir Home Assistant takvimi oluşturur.",
+          "enable_exam_calendar": "Sınavlar ve yazılılar için bir Home Assistant takvimi oluşturur.",
+          "enable_homework_todo": "Ödevler için bir Home Assistant yapılacaklar listesi oluşturur."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "API'ye ulaşılamadı veya güvenilir şekilde kontrol edilemedi. Lütfen internet bağlantınızı kontrol edin.",
+      "invalid_auth": "beste.schule tokeni reddetti. Lütfen yeni bir Personal Access Token oluşturup eksiksiz yapıştırın."
+    },
+    "abort": {
+      "already_configured": "beste.schule zaten yapılandırılmış."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "beste.schule seçenekleri",
+        "description": "Hangi isteğe bağlı varlıkların oluşturulacağını seçin.",
+        "data": {
+          "enable_timetable_calendar": "Ders programı takvimi",
+          "enable_absence_calendar": "Devamsızlık takvimi",
+          "enable_homework_calendar": "Ödev takvimi",
+          "enable_exam_calendar": "Sınav takvimi",
+          "enable_homework_todo": "Ödev yapılacaklar listesi"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Dersler için bir Home Assistant takvimi oluşturur.",
+          "enable_absence_calendar": "Devamsızlıklar için bir Home Assistant takvimi oluşturur.",
+          "enable_homework_calendar": "Ödevler için bir Home Assistant takvimi oluşturur.",
+          "enable_exam_calendar": "Sınavlar ve yazılılar için bir Home Assistant takvimi oluşturur.",
+          "enable_homework_todo": "Ödevler için bir Home Assistant yapılacaklar listesi oluşturur."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Hastalık günleri"
+      },
+      "school_class": {
+        "name": "Sınıf"
+      },
+      "timetable_card": {
+        "name": "Ders programı kartı"
+      },
+      "current_lesson": {
+        "name": "Geçerli ders"
+      },
+      "next_lesson": {
+        "name": "Sonraki ders"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Ders programı"
+      },
+      "absences": {
+        "name": "Devamsızlıklar"
+      },
+      "homework": {
+        "name": "Ödevler"
+      },
+      "exams": {
+        "name": "Sınavlar"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Ödevler"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Okul zamanı"
+      }
+    }
+  }
+}

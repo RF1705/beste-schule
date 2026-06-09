@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ρύθμιση beste.schule",
+        "description": "Χρειάζεστε ένα Personal Access Token από τον λογαριασμό σας στο beste.schule.\n\nΠώς να το αποκτήσετε:\n1. Συνδεθείτε στο beste.schule.\n2. Ανοίξτε τον λογαριασμό χρήστη από το όνομά σας επάνω δεξιά.\n3. Επιλέξτε API στο αριστερό μενού.\n4. Δημιουργήστε νέο token στο Personal Access Token.\n5. Αντιγράψτε το token και επικολλήστε το εδώ.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "Το token από την ενότητα API του λογαριασμού beste.schule."
+        }
+      },
+      "features": {
+        "title": "Λειτουργίες beste.schule",
+        "description": "Επιλέξτε ποιες προαιρετικές οντότητες θα δημιουργηθούν.",
+        "data": {
+          "enable_timetable_calendar": "Ημερολόγιο προγράμματος",
+          "enable_absence_calendar": "Ημερολόγιο απουσιών",
+          "enable_homework_calendar": "Ημερολόγιο εργασιών",
+          "enable_exam_calendar": "Ημερολόγιο εξετάσεων",
+          "enable_homework_todo": "Λίστα εργασιών"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Δημιουργεί ημερολόγιο Home Assistant για τα μαθήματα.",
+          "enable_absence_calendar": "Δημιουργεί ημερολόγιο Home Assistant για τις απουσίες.",
+          "enable_homework_calendar": "Δημιουργεί ημερολόγιο Home Assistant για τις εργασίες.",
+          "enable_exam_calendar": "Δημιουργεί ημερολόγιο Home Assistant για εξετάσεις και τεστ.",
+          "enable_homework_todo": "Δημιουργεί λίστα εργασιών Home Assistant για τις εργασίες."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Δεν ήταν δυνατή η πρόσβαση ή ο αξιόπιστος έλεγχος του API. Ελέγξτε τη σύνδεση στο διαδίκτυο.",
+      "invalid_auth": "Το beste.schule απέρριψε το token. Δημιουργήστε νέο Personal Access Token και επικολλήστε το ολόκληρο."
+    },
+    "abort": {
+      "already_configured": "Το beste.schule έχει ήδη ρυθμιστεί."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Επιλογές beste.schule",
+        "description": "Επιλέξτε ποιες προαιρετικές οντότητες θα δημιουργηθούν.",
+        "data": {
+          "enable_timetable_calendar": "Ημερολόγιο προγράμματος",
+          "enable_absence_calendar": "Ημερολόγιο απουσιών",
+          "enable_homework_calendar": "Ημερολόγιο εργασιών",
+          "enable_exam_calendar": "Ημερολόγιο εξετάσεων",
+          "enable_homework_todo": "Λίστα εργασιών"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Δημιουργεί ημερολόγιο Home Assistant για τα μαθήματα.",
+          "enable_absence_calendar": "Δημιουργεί ημερολόγιο Home Assistant για τις απουσίες.",
+          "enable_homework_calendar": "Δημιουργεί ημερολόγιο Home Assistant για τις εργασίες.",
+          "enable_exam_calendar": "Δημιουργεί ημερολόγιο Home Assistant για εξετάσεις και τεστ.",
+          "enable_homework_todo": "Δημιουργεί λίστα εργασιών Home Assistant για τις εργασίες."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Ημέρες ασθένειας"
+      },
+      "school_class": {
+        "name": "Τάξη"
+      },
+      "timetable_card": {
+        "name": "Κάρτα προγράμματος"
+      },
+      "current_lesson": {
+        "name": "Τρέχον μάθημα"
+      },
+      "next_lesson": {
+        "name": "Επόμενο μάθημα"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Πρόγραμμα"
+      },
+      "absences": {
+        "name": "Απουσίες"
+      },
+      "homework": {
+        "name": "Εργασίες"
+      },
+      "exams": {
+        "name": "Εξετάσεις"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Εργασίες"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Σχολικός χρόνος"
+      }
+    }
+  }
+}

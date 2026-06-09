@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja beste.schule",
+        "description": "Potrzebujesz Personal Access Token z konta beste.schule.\n\nJak go uzyskać:\n1. Zaloguj się do beste.schule.\n2. Otwórz konto użytkownika przez swoje imię w prawym górnym rogu.\n3. Wybierz API w lewym menu.\n4. Utwórz nowy token w sekcji Personal Access Token.\n5. Skopiuj token i wklej go tutaj.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "Token z sekcji API na koncie beste.schule."
+        }
+      },
+      "features": {
+        "title": "Funkcje beste.schule",
+        "description": "Wybierz opcjonalne encje do utworzenia.",
+        "data": {
+          "enable_timetable_calendar": "Kalendarz planu lekcji",
+          "enable_absence_calendar": "Kalendarz nieobecności",
+          "enable_homework_calendar": "Kalendarz zadań domowych",
+          "enable_exam_calendar": "Kalendarz sprawdzianów",
+          "enable_homework_todo": "Lista zadań domowych"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Tworzy kalendarz Home Assistant dla lekcji.",
+          "enable_absence_calendar": "Tworzy kalendarz Home Assistant dla nieobecności.",
+          "enable_homework_calendar": "Tworzy kalendarz Home Assistant dla zadań domowych.",
+          "enable_exam_calendar": "Tworzy kalendarz Home Assistant dla sprawdzianów i prac klasowych.",
+          "enable_homework_todo": "Tworzy listę zadań Home Assistant dla zadań domowych."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z API lub wiarygodnie go sprawdzić. Sprawdź połączenie z internetem.",
+      "invalid_auth": "beste.schule odrzuciła token. Utwórz nowy Personal Access Token i wklej go w całości."
+    },
+    "abort": {
+      "already_configured": "beste.schule jest już skonfigurowane."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje beste.schule",
+        "description": "Wybierz opcjonalne encje do utworzenia.",
+        "data": {
+          "enable_timetable_calendar": "Kalendarz planu lekcji",
+          "enable_absence_calendar": "Kalendarz nieobecności",
+          "enable_homework_calendar": "Kalendarz zadań domowych",
+          "enable_exam_calendar": "Kalendarz sprawdzianów",
+          "enable_homework_todo": "Lista zadań domowych"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Tworzy kalendarz Home Assistant dla lekcji.",
+          "enable_absence_calendar": "Tworzy kalendarz Home Assistant dla nieobecności.",
+          "enable_homework_calendar": "Tworzy kalendarz Home Assistant dla zadań domowych.",
+          "enable_exam_calendar": "Tworzy kalendarz Home Assistant dla sprawdzianów i prac klasowych.",
+          "enable_homework_todo": "Tworzy listę zadań Home Assistant dla zadań domowych."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Dni chorobowe"
+      },
+      "school_class": {
+        "name": "Klasa"
+      },
+      "timetable_card": {
+        "name": "Karta planu lekcji"
+      },
+      "current_lesson": {
+        "name": "Aktualna lekcja"
+      },
+      "next_lesson": {
+        "name": "Następna lekcja"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Plan lekcji"
+      },
+      "absences": {
+        "name": "Nieobecności"
+      },
+      "homework": {
+        "name": "Zadania domowe"
+      },
+      "exams": {
+        "name": "Sprawdziany"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Zadania domowe"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Czas szkolny"
+      }
+    }
+  }
+}

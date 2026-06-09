@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura beste.schule",
+        "description": "Serve un Personal Access Token dal tuo account beste.schule.\n\nCome ottenerlo:\n1. Accedi a beste.schule.\n2. Apri il tuo account utente dal nome in alto a destra.\n3. Seleziona API nel menu a sinistra.\n4. Crea un nuovo token in Personal Access Token.\n5. Copia il token e incollalo qui.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "Il token dalla sezione API del tuo account beste.schule."
+        }
+      },
+      "features": {
+        "title": "Funzioni beste.schule",
+        "description": "Scegli quali entità opzionali creare.",
+        "data": {
+          "enable_timetable_calendar": "Calendario orario",
+          "enable_absence_calendar": "Calendario assenze",
+          "enable_homework_calendar": "Calendario compiti",
+          "enable_exam_calendar": "Calendario verifiche",
+          "enable_homework_todo": "Elenco compiti"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Crea un calendario Home Assistant per le lezioni.",
+          "enable_absence_calendar": "Crea un calendario Home Assistant per le assenze.",
+          "enable_homework_calendar": "Crea un calendario Home Assistant per i compiti.",
+          "enable_exam_calendar": "Crea un calendario Home Assistant per verifiche e compiti in classe.",
+          "enable_homework_todo": "Crea un elenco attività Home Assistant per i compiti."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Non è stato possibile raggiungere o verificare l'API in modo affidabile. Controlla la connessione internet.",
+      "invalid_auth": "beste.schule ha rifiutato il token. Crea un nuovo Personal Access Token e incollalo per intero."
+    },
+    "abort": {
+      "already_configured": "beste.schule è già configurato."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni beste.schule",
+        "description": "Scegli quali entità opzionali creare.",
+        "data": {
+          "enable_timetable_calendar": "Calendario orario",
+          "enable_absence_calendar": "Calendario assenze",
+          "enable_homework_calendar": "Calendario compiti",
+          "enable_exam_calendar": "Calendario verifiche",
+          "enable_homework_todo": "Elenco compiti"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Crea un calendario Home Assistant per le lezioni.",
+          "enable_absence_calendar": "Crea un calendario Home Assistant per le assenze.",
+          "enable_homework_calendar": "Crea un calendario Home Assistant per i compiti.",
+          "enable_exam_calendar": "Crea un calendario Home Assistant per verifiche e compiti in classe.",
+          "enable_homework_todo": "Crea un elenco attività Home Assistant per i compiti."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Giorni di malattia"
+      },
+      "school_class": {
+        "name": "Classe"
+      },
+      "timetable_card": {
+        "name": "Scheda orario"
+      },
+      "current_lesson": {
+        "name": "Lezione attuale"
+      },
+      "next_lesson": {
+        "name": "Prossima lezione"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Orario"
+      },
+      "absences": {
+        "name": "Assenze"
+      },
+      "homework": {
+        "name": "Compiti"
+      },
+      "exams": {
+        "name": "Verifiche"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Compiti"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Orario scolastico"
+      }
+    }
+  }
+}

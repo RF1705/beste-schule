@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Podešavanje beste.schule",
+        "description": "Potreban je Personal Access Token iz vašeg beste.schule naloga.\n\nKako da ga dobijete:\n1. Prijavite se na beste.schule.\n2. Otvorite korisnički nalog preko svog imena gore desno.\n3. Izaberite API u levom meniju.\n4. Napravite novi token pod Personal Access Token.\n5. Kopirajte token i nalepite ga ovde.",
+        "data": {
+          "token": "Personal Access Token"
+        },
+        "data_description": {
+          "token": "Token iz API odeljka vašeg beste.schule naloga."
+        }
+      },
+      "features": {
+        "title": "beste.schule funkcije",
+        "description": "Izaberite koje opcione entitete treba napraviti.",
+        "data": {
+          "enable_timetable_calendar": "Kalendar rasporeda",
+          "enable_absence_calendar": "Kalendar izostanaka",
+          "enable_homework_calendar": "Kalendar domaćih zadataka",
+          "enable_exam_calendar": "Kalendar provera",
+          "enable_homework_todo": "Lista domaćih zadataka"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Pravi Home Assistant kalendar za časove.",
+          "enable_absence_calendar": "Pravi Home Assistant kalendar za izostanke.",
+          "enable_homework_calendar": "Pravi Home Assistant kalendar za domaće zadatke.",
+          "enable_exam_calendar": "Pravi Home Assistant kalendar za provere i kontrolne zadatke.",
+          "enable_homework_todo": "Pravi Home Assistant listu zadataka za domaće zadatke."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "API nije moguće dohvatiti ili pouzdano proveriti. Proverite internet vezu.",
+      "invalid_auth": "beste.schule je odbio token. Napravite novi Personal Access Token i nalepite ga u celosti."
+    },
+    "abort": {
+      "already_configured": "beste.schule je već podešen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "beste.schule opcije",
+        "description": "Izaberite koje opcione entitete treba napraviti.",
+        "data": {
+          "enable_timetable_calendar": "Kalendar rasporeda",
+          "enable_absence_calendar": "Kalendar izostanaka",
+          "enable_homework_calendar": "Kalendar domaćih zadataka",
+          "enable_exam_calendar": "Kalendar provera",
+          "enable_homework_todo": "Lista domaćih zadataka"
+        },
+        "data_description": {
+          "enable_timetable_calendar": "Pravi Home Assistant kalendar za časove.",
+          "enable_absence_calendar": "Pravi Home Assistant kalendar za izostanke.",
+          "enable_homework_calendar": "Pravi Home Assistant kalendar za domaće zadatke.",
+          "enable_exam_calendar": "Pravi Home Assistant kalendar za provere i kontrolne zadatke.",
+          "enable_homework_todo": "Pravi Home Assistant listu zadataka za domaće zadatke."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sick_days": {
+        "name": "Dani bolesti"
+      },
+      "school_class": {
+        "name": "Razred"
+      },
+      "timetable_card": {
+        "name": "Kartica rasporeda"
+      },
+      "current_lesson": {
+        "name": "Trenutni čas"
+      },
+      "next_lesson": {
+        "name": "Sledeći čas"
+      }
+    },
+    "calendar": {
+      "timetable": {
+        "name": "Raspored"
+      },
+      "absences": {
+        "name": "Izostanci"
+      },
+      "homework": {
+        "name": "Domaći zadaci"
+      },
+      "exams": {
+        "name": "Provere"
+      }
+    },
+    "todo": {
+      "homework": {
+        "name": "Domaći zadaci"
+      }
+    },
+    "binary_sensor": {
+      "school_time": {
+        "name": "Školsko vreme"
+      }
+    }
+  }
+}
