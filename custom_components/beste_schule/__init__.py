@@ -22,7 +22,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_TOKEN],
     )
     coordinator = BesteSchuleDataUpdateCoordinator(hass, api)
-    coordinator.timetable_cache_start = _entry_created_at(entry) or dt_util.now()
+    coordinator.timetable_cache_start = _entry_start_of_day(entry) or _start_of_day(
+        dt_util.now()
+    )
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -77,11 +79,14 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-def _entry_created_at(entry: ConfigEntry):
-    """Return the config entry creation time when Home Assistant provides it."""
+def _entry_start_of_day(entry: ConfigEntry):
+    """Return the config entry creation date at local midnight."""
     created_at = getattr(entry, "created_at", None)
     if created_at is None:
         return None
-    if created_at.tzinfo is None:
-        return dt_util.as_local(created_at)
-    return created_at
+    return _start_of_day(dt_util.as_local(created_at))
+
+
+def _start_of_day(value):
+    """Return a datetime at the beginning of the given local day."""
+    return value.replace(hour=0, minute=0, second=0, microsecond=0)

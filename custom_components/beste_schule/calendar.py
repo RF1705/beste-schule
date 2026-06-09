@@ -541,8 +541,8 @@ def _lesson_events(
                 if not include_cancelled:
                     continue
 
-            event_start = datetime.combine(current_day, start_time, start_date.tzinfo)
-            event_end = datetime.combine(current_day, end_time, start_date.tzinfo)
+            event_start = _local_datetime(current_day, start_time)
+            event_end = _local_datetime(current_day, end_time)
             if event_end > start_date and event_start < end_date:
                 key = _event_key(current_day, start_time, end_time, title, location)
                 if key not in seen:
@@ -598,6 +598,12 @@ def _event_sort_value(value: date | datetime) -> datetime:
     return datetime.combine(value, time.min)
 
 
+def _local_datetime(day: date, value: time) -> datetime:
+    """Return a timezone-aware datetime for a local school time."""
+    timezone = getattr(dt_util, "DEFAULT_TIME_ZONE", None) or dt_util.now().tzinfo
+    return datetime.combine(day, value, timezone)
+
+
 def _cached_lesson_events(
     coordinator: BesteSchuleDataUpdateCoordinator,
     start_date: datetime,
@@ -607,7 +613,7 @@ def _cached_lesson_events(
     now = dt_util.now()
     cache_start = getattr(coordinator, "timetable_cache_start", None)
     if cache_start is None:
-        cache_start = now
+        cache_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         coordinator.timetable_cache_start = cache_start
 
     horizon = now + timedelta(days=TIMETABLE_CACHE_DAYS)
@@ -865,12 +871,8 @@ def _exam_events(
             description_parts.append(f"Typ: {entry['note_type']}")
 
         if start_time is not None and end_time is not None:
-            event_start: date | datetime = datetime.combine(
-                exam_date, start_time, start_date.tzinfo
-            )
-            event_end: date | datetime = datetime.combine(
-                exam_date, end_time, start_date.tzinfo
-            )
+            event_start: date | datetime = _local_datetime(exam_date, start_time)
+            event_end: date | datetime = _local_datetime(exam_date, end_time)
         else:
             event_start = exam_date
             event_end = exam_date + timedelta(days=1)
