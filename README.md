@@ -13,6 +13,7 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 ## Features
 
 - Timetable calendar with lessons from beste.schule
+- Timetable history keeps past lessons from the setup day onward
 - Absence calendar with all-day absence events
 - Homework calendar beta from visible journal notes
 - Exams calendar beta from visible journal notes

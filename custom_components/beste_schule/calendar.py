@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
@@ -105,6 +106,7 @@ TIMETABLE_SOURCE_KEYS = (
     "time_tables_current",
 )
 TIMETABLE_CACHE_DAYS = 21
+TIMETABLE_HISTORY_STORE_VERSION = 1
 
 
 async def async_setup_entry(
@@ -609,7 +611,7 @@ def _cached_lesson_events(
     start_date: datetime,
     end_date: datetime,
 ) -> list[CalendarEvent]:
-    """Return timetable events from an in-memory rolling cache."""
+    """Return timetable events with frozen history and live future data."""
     now = dt_util.now()
     cache_start = getattr(coordinator, "timetable_cache_start", None)
     if cache_start is None:
@@ -626,16 +628,27 @@ def _cached_lesson_events(
     if visible_start >= visible_end:
         return []
 
-    cache_keys = [
+    cutoff = _history_cutoff()
+    live_start = max(visible_start, cutoff)
+    live_keys = [
         key
         for key, event in cache.items()
-        if event.end > visible_start and event.start < visible_end
+        if event.start >= live_start and event.end > visible_start and event.start < visible_end
     ]
-    for key in cache_keys:
+    for key in live_keys:
         cache.pop(key, None)
 
-    for event in _lesson_events(coordinator.data, visible_start, visible_end):
-        cache[_cache_key(event)] = event
+    if visible_start < cutoff:
+        for event in _lesson_events(
+            coordinator.data,
+            visible_start,
+            min(visible_end, cutoff),
+        ):
+            cache.setdefault(_cache_key(event), event)
+
+    if live_start < visible_end:
+        for event in _lesson_events(coordinator.data, live_start, visible_end):
+            cache[_cache_key(event)] = event
 
     events = [
         event
@@ -649,6 +662,51 @@ def _cached_lesson_events(
 def _cache_key(event: CalendarEvent) -> str:
     """Build a stable cache key for one lesson slot."""
     return f"{event.start.isoformat()}|{event.end.isoformat()}"
+
+
+def _event_to_storage(event: CalendarEvent) -> dict[str, Any]:
+    """Convert a calendar event to stored JSON data."""
+    return {
+        "summary": event.summary,
+        "start": event.start.isoformat(),
+        "end": event.end.isoformat(),
+        "location": event.location,
+        "description": event.description,
+    }
+
+
+def _event_from_storage(value: dict[str, Any]) -> CalendarEvent | None:
+    """Convert stored JSON data back to a calendar event."""
+    summary = value.get("summary")
+    start = _parse_stored_datetime(value.get("start"))
+    end = _parse_stored_datetime(value.get("end"))
+    if not isinstance(summary, str) or start is None or end is None:
+        return None
+    return CalendarEvent(
+        summary=summary,
+        start=start,
+        end=end,
+        location=_extract_text(value.get("location")),
+        description=_extract_text(value.get("description")),
+    )
+
+
+def _parse_stored_datetime(value: Any) -> datetime | None:
+    """Parse a stored datetime string."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return dt_util.as_local(parsed)
+    return parsed
+
+
+def _history_cutoff() -> datetime:
+    """Return the point before which timetable events are frozen."""
+    return dt_util.now()
 
 
 def _absence_text(value: Any) -> str | None:
@@ -1032,6 +1090,25 @@ class BesteSchuleTimetableCalendar(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_timetable"
         self._entry = entry
+        self._store = Store(
+            coordinator.hass,
+            TIMETABLE_HISTORY_STORE_VERSION,
+            f"{DOMAIN}_{entry.entry_id}_timetable_history",
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Load frozen timetable history."""
+        await super().async_added_to_hass()
+        stored = await self._store.async_load()
+        cache: dict[str, CalendarEvent] = {}
+        if isinstance(stored, dict):
+            for key, value in stored.items():
+                if not isinstance(key, str) or not isinstance(value, dict):
+                    continue
+                event = _event_from_storage(value)
+                if event is not None:
+                    cache[key] = event
+        self.coordinator.timetable_event_cache = cache
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1056,7 +1133,24 @@ class BesteSchuleTimetableCalendar(
         end_date: datetime,
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
-        return _cached_lesson_events(self.coordinator, start_date, end_date)
+        events = _cached_lesson_events(self.coordinator, start_date, end_date)
+        await self._async_save_history()
+        return events
+
+    async def _async_save_history(self) -> None:
+        """Persist frozen timetable history."""
+        cutoff = _history_cutoff()
+        cache: dict[str, CalendarEvent] = getattr(
+            self.coordinator,
+            "timetable_event_cache",
+            {},
+        )
+        history = {
+            key: _event_to_storage(event)
+            for key, event in cache.items()
+            if event.start < cutoff
+        }
+        await self._store.async_save(history)
 
 
 class BesteSchuleAbsenceCalendar(
