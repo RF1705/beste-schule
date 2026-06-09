@@ -250,6 +250,26 @@ def _room_text(value: Any) -> str | None:
     return _extract_text(value)
 
 
+def _replacement_relation_text(value: Any, formatter: Any) -> str | None:
+    """Return the replacement relation, usually the last item in a substitution list."""
+    if isinstance(value, list) and len(value) > 1:
+        return formatter(value[-1])
+    return formatter(value)
+
+
+def _direct_relation_text(
+    item: dict[str, Any],
+    keys: tuple[str, ...],
+    formatter: Any,
+) -> str | None:
+    """Return formatted relation text from the current level only."""
+    for key in keys:
+        text = formatter(item.get(key))
+        if text:
+            return text
+    return None
+
+
 def _find_nested_relation_text(
     item: dict[str, Any],
     keys: tuple[str, ...],
@@ -476,15 +496,31 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
         ):
             overlay[key] = {
                 "status": "substitution",
-                "title": _find_nested_text(item, TITLE_KEYS),
-                "location": _find_nested_relation_text(item, ROOM_KEYS, _room_text),
-                "teacher": _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text),
+                "title": _find_text(item, TITLE_KEYS) or _find_nested_text(item, TITLE_KEYS),
+                "location": _direct_relation_text(
+                    item,
+                    ROOM_KEYS,
+                    lambda value: _replacement_relation_text(value, _room_text),
+                ),
+                "teacher": _direct_relation_text(
+                    item,
+                    TEACHER_KEYS,
+                    lambda value: _replacement_relation_text(value, _teacher_text),
+                ),
                 "notes": _extract_text(item.get("notes")),
             }
         else:
-            title = _find_nested_text(item, TITLE_KEYS)
-            location = _find_nested_relation_text(item, ROOM_KEYS, _room_text)
-            teacher = _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text)
+            title = _find_text(item, TITLE_KEYS) or _find_nested_text(item, TITLE_KEYS)
+            location = _direct_relation_text(
+                item,
+                ROOM_KEYS,
+                lambda value: _replacement_relation_text(value, _room_text),
+            )
+            teacher = _direct_relation_text(
+                item,
+                TEACHER_KEYS,
+                lambda value: _replacement_relation_text(value, _teacher_text),
+            )
             notes = _extract_text(item.get("notes"))
             if title or location or teacher or notes:
                 overlay[key] = {
