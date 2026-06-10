@@ -479,19 +479,21 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
         if day is None or number is None:
             continue
 
-        text = _all_text(item).lower()
         try:
             key = (day, int(number))
         except (TypeError, ValueError):
             continue
 
         status = str(item.get("status", "")).lower()
+        if status in {"initial", "hold", "regular"}:
+            continue
+        text = _all_text(item.get("notes")).lower()
         if (
             status in {"cancelled", "canceled", "ausfall", "free"}
             or any(marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel"))
         ):
             overlay[key] = {"status": "cancelled"}
-        elif status in {"substitution", "vertretung"} or any(
+        elif status in {"planned", "substitution", "vertretung"} or any(
             marker in text for marker in ("vertret", "ersatz", "substitution")
         ):
             overlay[key] = {
