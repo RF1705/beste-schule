@@ -302,6 +302,23 @@ def _replacement_teacher_text(
     return replacement_teachers[-1]
 
 
+def _replacement_room_text(
+    replacement_rooms: list[str],
+    original_room: str | None,
+) -> str | None:
+    """Return the replacement room, excluding the original room when possible."""
+    if not replacement_rooms:
+        return None
+    if len(replacement_rooms) == 1:
+        return replacement_rooms[0]
+
+    normalized_original = _normalized_text(original_room)
+    for replacement_room in replacement_rooms:
+        if _normalized_text(replacement_room) != normalized_original:
+            return replacement_room
+    return replacement_rooms[-1]
+
+
 def _direct_relation_text(
     item: dict[str, Any],
     keys: tuple[str, ...],
@@ -549,6 +566,7 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
                     ROOM_KEYS,
                     lambda value: _replacement_relation_text(value, _room_text),
                 ),
+                "locations": _direct_relation_texts(item, ROOM_KEYS, _room_text),
                 "teacher": _direct_relation_text(
                     item,
                     TEACHER_KEYS,
@@ -575,6 +593,7 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
                     "status": "substitution",
                     "title": title,
                     "location": location,
+                    "locations": _direct_relation_texts(item, ROOM_KEYS, _room_text),
                     "teacher": teacher,
                     "teachers": _direct_relation_texts(item, TEACHER_KEYS, _teacher_text),
                     "notes": notes,
@@ -679,6 +698,9 @@ def _lesson_events(
                         substitution_location = (
                             overlay_value.get("location") if overlay_value else None
                         )
+                        substitution_locations = (
+                            overlay_value.get("locations") if overlay_value else []
+                        )
                         substitution_teacher = (
                             overlay_value.get("teacher") if overlay_value else None
                         )
@@ -692,6 +714,11 @@ def _lesson_events(
                             substitution_teacher = (
                                 _replacement_teacher_text(substitution_teachers, teacher)
                                 or substitution_teacher
+                            )
+                        if isinstance(substitution_locations, list):
+                            substitution_location = (
+                                _replacement_room_text(substitution_locations, location)
+                                or substitution_location
                             )
                         event_description = "\n".join(
                             part
