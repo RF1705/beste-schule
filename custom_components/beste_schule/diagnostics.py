@@ -137,7 +137,73 @@ def _child_diagnostics(
         },
         "grade_debug": _grade_debug(data),
         "homework_debug": _homework_debug(data),
+        "substitution_debug": _substitution_debug(data),
     }
+
+
+def _substitution_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return focused diagnostics for planned substitutions."""
+    result: list[dict[str, Any]] = []
+    source = data.get("substitution_days")
+    days = source.get("data") if isinstance(source, dict) else source
+    if not isinstance(days, list):
+        return result
+
+    for day in days:
+        if not isinstance(day, dict):
+            continue
+        lessons = day.get("lessons")
+        if not isinstance(lessons, list):
+            continue
+        for lesson in lessons:
+            if not isinstance(lesson, dict):
+                continue
+            status = lesson.get("status")
+            if status != "planned":
+                continue
+            result.append(
+                {
+                    "date": day.get("date") or _nested_value(lesson.get("day"), "date"),
+                    "nr": lesson.get("nr"),
+                    "status": status,
+                    "subject": _relation_debug(lesson.get("subject")),
+                    "group": _relation_debug(lesson.get("group")),
+                    "rooms": [
+                        _relation_debug(room)
+                        for room in lesson.get("rooms", [])
+                        if isinstance(room, dict)
+                    ],
+                    "teachers": [
+                        _relation_debug(teacher)
+                        for teacher in lesson.get("teachers", [])
+                        if isinstance(teacher, dict)
+                    ],
+                    "notes_count": (
+                        len(lesson.get("notes"))
+                        if isinstance(lesson.get("notes"), list)
+                        else None
+                    ),
+                }
+            )
+    return result
+
+
+def _relation_debug(value: Any) -> Any:
+    """Return selected relation fields without unrelated payload."""
+    if not isinstance(value, dict):
+        return value
+    return {
+        key: value.get(key)
+        for key in ("id", "local_id", "name", "forename")
+        if key in value
+    }
+
+
+def _nested_value(value: Any, key: str) -> Any:
+    """Return a dict value if available."""
+    if isinstance(value, dict):
+        return value.get(key)
+    return None
 
 
 def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
