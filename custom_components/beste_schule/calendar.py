@@ -257,6 +257,51 @@ def _replacement_relation_text(value: Any, formatter: Any) -> str | None:
     return formatter(value)
 
 
+def _relation_texts(value: Any, formatter: Any) -> list[str]:
+    """Return formatted relation texts without joining list values."""
+    if isinstance(value, list):
+        return [text for item in value if (text := formatter(item))]
+    text = formatter(value)
+    return [text] if text else []
+
+
+def _direct_relation_texts(
+    item: dict[str, Any],
+    keys: tuple[str, ...],
+    formatter: Any,
+) -> list[str]:
+    """Return formatted relation texts from the current level only."""
+    for key in keys:
+        texts = _relation_texts(item.get(key), formatter)
+        if texts:
+            return texts
+    return []
+
+
+def _normalized_text(value: str | None) -> str | None:
+    """Return text normalized for comparisons."""
+    if not value:
+        return None
+    return " ".join(value.split()).casefold()
+
+
+def _replacement_teacher_text(
+    replacement_teachers: list[str],
+    original_teacher: str | None,
+) -> str | None:
+    """Return the replacement teacher, excluding the original teacher when possible."""
+    if not replacement_teachers:
+        return None
+    if len(replacement_teachers) == 1:
+        return replacement_teachers[0]
+
+    normalized_original = _normalized_text(original_teacher)
+    for replacement_teacher in replacement_teachers:
+        if _normalized_text(replacement_teacher) != normalized_original:
+            return replacement_teacher
+    return replacement_teachers[-1]
+
+
 def _direct_relation_text(
     item: dict[str, Any],
     keys: tuple[str, ...],
@@ -463,9 +508,9 @@ def _all_text(value: Any) -> str:
     return ""
 
 
-def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[str, str | None]]:
+def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[str, Any]]:
     """Return cancellation/substitution markers keyed by date and lesson number."""
-    overlay: dict[tuple[date, int], dict[str, str | None]] = {}
+    overlay: dict[tuple[date, int], dict[str, Any]] = {}
     source = data.get("substitution_days")
     for item in _iter_values(source):
         if not isinstance(item, dict):
@@ -509,6 +554,7 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
                     TEACHER_KEYS,
                     lambda value: _replacement_relation_text(value, _teacher_text),
                 ),
+                "teachers": _direct_relation_texts(item, TEACHER_KEYS, _teacher_text),
                 "notes": _extract_text(item.get("notes")),
             }
         else:
@@ -530,6 +576,7 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
                     "title": title,
                     "location": location,
                     "teacher": teacher,
+                    "teachers": _direct_relation_texts(item, TEACHER_KEYS, _teacher_text),
                     "notes": notes,
                 }
     return overlay
@@ -629,9 +676,23 @@ def _lesson_events(
                             if part
                         )
                     if overlay_status == "substitution":
-                        substitution_location = overlay_value.get("location") if overlay_value else None
-                        substitution_teacher = overlay_value.get("teacher") if overlay_value else None
-                        substitution_notes = overlay_value.get("notes") if overlay_value else None
+                        substitution_location = (
+                            overlay_value.get("location") if overlay_value else None
+                        )
+                        substitution_teacher = (
+                            overlay_value.get("teacher") if overlay_value else None
+                        )
+                        substitution_teachers = (
+                            overlay_value.get("teachers") if overlay_value else []
+                        )
+                        substitution_notes = (
+                            overlay_value.get("notes") if overlay_value else None
+                        )
+                        if isinstance(substitution_teachers, list):
+                            substitution_teacher = (
+                                _replacement_teacher_text(substitution_teachers, teacher)
+                                or substitution_teacher
+                            )
                         event_description = "\n".join(
                             part
                             for part in (
