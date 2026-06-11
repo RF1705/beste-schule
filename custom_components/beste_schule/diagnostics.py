@@ -9,7 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DOMAIN
-from .entity import school_name_from_data
+from .coordinator import coordinators_for_entry
+from .entity import school_name_from_data, student_id_from_data, student_name_from_data
 from .sensor import (
     _api_average,
     _average,
@@ -74,29 +75,51 @@ async def async_get_config_entry_diagnostics(
     entry: ConfigEntry,
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinators = coordinators_for_entry(hass, entry.entry_id)
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    children = []
+    for coordinator in coordinators:
+        data = coordinator.data or {}
+        student_id = student_id_from_data(data)
+        identifier = (
+            f"{entry.entry_id}:{student_id}"
+            if data.get("multi_student")
+            else entry.entry_id
+        )
+        device = device_registry.async_get_device(
+            identifiers={(DOMAIN, identifier)}
+        )
+        device_info: dict[str, Any] | None = None
+        if device is not None:
+            device_info = {
+                "name": device.name,
+                "manufacturer": device.manufacturer,
+                "model": device.model,
+                "entry_type": str(device.entry_type),
+                "identifiers": sorted(
+                    f"{identifier[0]}:{identifier[1]}" for identifier in device.identifiers
+                ),
+            }
+        children.append(_child_diagnostics(data, device_info))
 
-    device_info: dict[str, Any] | None = None
-    if device is not None:
-        device_info = {
-            "name": device.name,
-            "manufacturer": device.manufacturer,
-            "model": device.model,
-            "entry_type": str(device.entry_type),
-            "identifiers": sorted(
-                f"{identifier[0]}:{identifier[1]}" for identifier in device.identifiers
-            ),
-        }
-
-    data = coordinator.data or {}
     return {
         "entry": {
             "title": entry.title,
             "data_keys": sorted(entry.data.keys()),
             "stored_school_name": entry.data.get(CONF_SCHOOL_NAME),
         },
+        "children": children,
+    }
+
+
+def _child_diagnostics(
+    data: dict[str, Any],
+    device_info: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Return diagnostics for one child coordinator."""
+    return {
+        "student_id": student_id_from_data(data),
+        "student_name": student_name_from_data(data),
         "device_registry": device_info,
         "detected_school_name": school_name_from_data(data),
         "response_summary": {
@@ -105,7 +128,7 @@ async def async_get_config_entry_diagnostics(
         "timetable_samples": {
             key: _sample(value)
             for key, value in data.items()
-            if key in {"school", "students"}
+            if key in {"school", "students", "selected_student"}
             or key.startswith("time_")
             or key.startswith("journal_")
             or key == "substitution_days"

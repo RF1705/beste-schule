@@ -121,13 +121,64 @@ def _school_data(data: Any) -> dict[str, Any] | None:
     return None
 
 
+def student_data_from_data(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the student represented by this data block."""
+    selected = data.get("selected_student")
+    if isinstance(selected, dict):
+        return selected
+
+    students = data.get("students")
+    if isinstance(students, dict):
+        value = students.get("data")
+        if isinstance(value, list):
+            return next((item for item in value if isinstance(item, dict)), None)
+        if isinstance(value, dict):
+            return value
+    if isinstance(students, list):
+        return next((item for item in students if isinstance(item, dict)), None)
+    return None
+
+
+def student_id_from_data(data: dict[str, Any]) -> str:
+    """Return a stable student id for entity and device identifiers."""
+    student = student_data_from_data(data)
+    if isinstance(student, dict) and student.get("id") is not None:
+        return str(student["id"])
+    return "student"
+
+
+def student_name_from_data(data: dict[str, Any]) -> str | None:
+    """Return a readable student name, preferring the first name."""
+    student = student_data_from_data(data)
+    if not isinstance(student, dict):
+        return None
+
+    for key in ("forename", "firstName", "first_name", "nickname", "givenName"):
+        text = _text(student.get(key))
+        if text:
+            return text
+
+    full_name = _text(student.get("displayName")) or _text(student.get("full_name"))
+    if full_name:
+        return full_name.split()[0]
+
+    return _text(student.get("name"))
+
+
 def besteschule_device_info(entry: ConfigEntry, data: dict[str, Any]) -> DeviceInfo:
     """Return Home Assistant device info for beste.schule entities."""
     school_name = school_name_from_data(data) or entry.data.get(CONF_SCHOOL_NAME)
+    student_id = student_id_from_data(data)
+    student_name = student_name_from_data(data) or entry.title
+    identifier = (
+        f"{entry.entry_id}:{student_id}"
+        if data.get("multi_student")
+        else entry.entry_id
+    )
     return DeviceInfo(
-        identifiers={(DOMAIN, entry.entry_id)},
+        identifiers={(DOMAIN, identifier)},
         manufacturer="beste.schule",
         model=school_name or "beste.schule",
-        name=entry.title,
+        name=student_name,
         configuration_url="https://beste.schule",
     )

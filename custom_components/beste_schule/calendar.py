@@ -24,7 +24,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
 )
-from .coordinator import BesteSchuleDataUpdateCoordinator
+from .coordinator import BesteSchuleDataUpdateCoordinator, coordinators_for_entry
 from .entity import besteschule_device_info, school_name_from_data
 
 WEEKDAY_NAMES = {
@@ -115,17 +115,17 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up beste.schule calendars."""
-    coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     options = {**DEFAULT_OPTIONS, **entry.options}
     entities: list[CalendarEntity] = []
-    if options[CONF_ENABLE_TIMETABLE_CALENDAR]:
-        entities.append(BesteSchuleTimetableCalendar(entry, coordinator))
-    if options[CONF_ENABLE_ABSENCE_CALENDAR]:
-        entities.append(BesteSchuleAbsenceCalendar(entry, coordinator))
-    if options[CONF_ENABLE_HOMEWORK_CALENDAR]:
-        entities.append(BesteSchuleHomeworkCalendar(entry, coordinator))
-    if options[CONF_ENABLE_EXAM_CALENDAR]:
-        entities.append(BesteSchuleExamCalendar(entry, coordinator))
+    for coordinator in coordinators_for_entry(hass, entry.entry_id):
+        if options[CONF_ENABLE_TIMETABLE_CALENDAR]:
+            entities.append(BesteSchuleTimetableCalendar(entry, coordinator))
+        if options[CONF_ENABLE_ABSENCE_CALENDAR]:
+            entities.append(BesteSchuleAbsenceCalendar(entry, coordinator))
+        if options[CONF_ENABLE_HOMEWORK_CALENDAR]:
+            entities.append(BesteSchuleHomeworkCalendar(entry, coordinator))
+        if options[CONF_ENABLE_EXAM_CALENDAR]:
+            entities.append(BesteSchuleExamCalendar(entry, coordinator))
     async_add_entities(entities)
 
 
@@ -1151,12 +1151,13 @@ class BesteSchuleTimetableCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_timetable"
+        unique_prefix = coordinator.unique_id_prefix(entry.entry_id)
+        self._attr_unique_id = f"{unique_prefix}_timetable"
         self._entry = entry
         self._store = Store(
             coordinator.hass,
             TIMETABLE_HISTORY_STORE_VERSION,
-            f"{DOMAIN}_{entry.entry_id}_timetable_history",
+            f"{DOMAIN}_{unique_prefix}_timetable_history",
         )
 
     async def async_added_to_hass(self) -> None:
@@ -1230,7 +1231,7 @@ class BesteSchuleAbsenceCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_absences"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_absences"
         self._entry = entry
 
     @property
@@ -1269,7 +1270,7 @@ class BesteSchuleHomeworkCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_homework"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_homework"
         self._entry = entry
 
     @property
@@ -1308,7 +1309,7 @@ class BesteSchuleExamCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_exams"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_exams"
         self._entry = entry
 
     @property

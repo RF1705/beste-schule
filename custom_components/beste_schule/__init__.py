@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
-from .api import BesteSchuleApi
+from .api import BesteSchuleApi, BesteSchuleApiError
 from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DEFAULT_API_URL, DOMAIN, PLATFORMS
 from .coordinator import BesteSchuleDataUpdateCoordinator
-from .entity import school_name_from_data
+from .entity import school_name_from_data, student_id_from_data
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -21,18 +23,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DEFAULT_API_URL,
         entry.data[CONF_TOKEN],
     )
-    coordinator = BesteSchuleDataUpdateCoordinator(hass, api)
-    coordinator.timetable_cache_start = _entry_start_of_day(entry) or _start_of_day(
-        dt_util.now()
-    )
-    await coordinator.async_config_entry_first_refresh()
+    students = await _fetch_students(api)
+    student_items = _student_items(students)
+    if not student_items:
+        student_items = [None]
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    coordinators: list[BesteSchuleDataUpdateCoordinator] = []
+    for student in student_items:
+        coordinator = BesteSchuleDataUpdateCoordinator(hass, api, student, students)
+        coordinator.timetable_cache_start = _entry_start_of_day(entry) or _start_of_day(
+            dt_util.now()
+        )
+        await coordinator.async_config_entry_first_refresh()
+        coordinators.append(coordinator)
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinators
     await hass.config_entries.async_forward_entry_setups(
         entry, [Platform(platform) for platform in PLATFORMS]
     )
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
-    _async_update_device_info(hass, entry, coordinator)
+    for coordinator in coordinators:
+        _async_update_device_info(hass, entry, coordinator)
     return True
 
 
@@ -63,7 +74,15 @@ def _async_update_device_info(
         )
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    student_id = student_id_from_data(coordinator.data)
+    identifier = (
+        f"{entry.entry_id}:{student_id}"
+        if coordinator.data.get("multi_student")
+        else entry.entry_id
+    )
+    device = device_registry.async_get_device(
+        identifiers={(DOMAIN, identifier)}
+    )
     if device is None:
         return
 
@@ -90,3 +109,24 @@ def _entry_start_of_day(entry: ConfigEntry):
 def _start_of_day(value):
     """Return a datetime at the beginning of the given local day."""
     return value.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+async def _fetch_students(api: BesteSchuleApi) -> Any:
+    """Fetch the students list, falling back to single-child mode on API errors."""
+    try:
+        return await api.fetch_students()
+    except BesteSchuleApiError:
+        return None
+
+
+def _student_items(students: Any) -> list[dict[str, Any]]:
+    """Return all student dictionaries from a students API response."""
+    if isinstance(students, dict):
+        data = students.get("data")
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+        if isinstance(data, dict):
+            return [data]
+    if isinstance(students, list):
+        return [item for item in students if isinstance(item, dict)]
+    return []

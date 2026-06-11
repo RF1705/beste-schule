@@ -25,8 +25,8 @@ from .calendar import (
     _parse_date,
 )
 from .const import DOMAIN
-from .coordinator import BesteSchuleDataUpdateCoordinator
-from .entity import besteschule_device_info
+from .coordinator import BesteSchuleDataUpdateCoordinator, coordinators_for_entry
+from .entity import besteschule_device_info, student_data_from_data
 
 CLASSWORK_MARKERS = (
     "ka",
@@ -45,20 +45,22 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up beste.schule sensors."""
-    coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [
-            BesteSchuleSickDaysSensor(entry, coordinator),
-            BesteSchuleClassSensor(entry, coordinator),
-            BesteSchuleTimetableCardSensor(entry, coordinator),
-            BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
-            BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
-            *[
-                BesteSchuleGradeAverageSensor(entry, coordinator, subject)
-                for subject in _grade_subjects(coordinator.data)
-            ],
-        ]
-    )
+    entities: list[SensorEntity] = []
+    for coordinator in coordinators_for_entry(hass, entry.entry_id):
+        entities.extend(
+            [
+                BesteSchuleSickDaysSensor(entry, coordinator),
+                BesteSchuleClassSensor(entry, coordinator),
+                BesteSchuleTimetableCardSensor(entry, coordinator),
+                BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
+                BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
+                *[
+                    BesteSchuleGradeAverageSensor(entry, coordinator, subject)
+                    for subject in _grade_subjects(coordinator.data)
+                ],
+            ]
+        )
+    async_add_entities(entities)
 
 
 def _data_list(value: Any) -> list[Any]:
@@ -303,6 +305,10 @@ def _sick_absence_days(data: dict[str, Any]) -> set[str]:
 
 def _student_data(data: dict[str, Any]) -> dict[str, Any] | None:
     """Return the first student data dict."""
+    selected = student_data_from_data(data)
+    if selected is not None:
+        return selected
+
     students = data.get("students")
     if isinstance(students, dict):
         value = students.get("data")
@@ -469,7 +475,7 @@ class BesteSchuleClassSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_school_class"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_school_class"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -497,7 +503,7 @@ class BesteSchuleTimetableCardSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_timetable_card"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_timetable_card"
         self._attr_translation_key = "timetable_card"
 
     @property
@@ -534,7 +540,7 @@ class BesteSchuleSickDaysSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_sick_days"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_sick_days"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -569,7 +575,7 @@ class BesteSchuleLessonSensor(
         self._entry = entry
         self._kind = kind
         self._attr_translation_key = kind
-        self._attr_unique_id = f"{entry.entry_id}_{kind}"
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_{kind}"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -626,7 +632,9 @@ class BesteSchuleGradeAverageSensor(
         self._entry = entry
         self._subject = subject
         self._attr_name = f"Note {subject}"
-        self._attr_unique_id = f"{entry.entry_id}_grade_average_{_slug(subject)}"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_grade_average_{_slug(subject)}"
+        )
 
     @property
     def device_info(self) -> DeviceInfo:

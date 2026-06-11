@@ -25,7 +25,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
 )
-from .coordinator import BesteSchuleDataUpdateCoordinator
+from .coordinator import BesteSchuleDataUpdateCoordinator, coordinators_for_entry
 from .entity import besteschule_device_info
 
 STORE_VERSION = 1
@@ -48,8 +48,12 @@ async def async_setup_entry(
         async_add_entities([])
         return
 
-    coordinator: BesteSchuleDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([BesteSchuleHomeworkTodoList(entry, coordinator)])
+    async_add_entities(
+        [
+            BesteSchuleHomeworkTodoList(entry, coordinator)
+            for coordinator in coordinators_for_entry(hass, entry.entry_id)
+        ]
+    )
 
 
 class BesteSchuleHomeworkTodoList(
@@ -68,12 +72,13 @@ class BesteSchuleHomeworkTodoList(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_homework_todo"
+        unique_prefix = coordinator.unique_id_prefix(entry.entry_id)
+        self._attr_unique_id = f"{unique_prefix}_homework_todo"
         self._completed_uids: set[str] = set()
         self._store = Store(
             coordinator.hass,
             STORE_VERSION,
-            f"{DOMAIN}_{entry.entry_id}_homework_todo_completed",
+            f"{DOMAIN}_{unique_prefix}_homework_todo_completed",
         )
 
     async def async_added_to_hass(self) -> None:

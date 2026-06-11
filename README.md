@@ -25,6 +25,7 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 - Timetable JSON sensor for `fabel-smith/stundenplan-card`
 - Options to enable or disable calendars and the homework to-do list
 - English and German translations
+- Beta support for multiple children in one beste.schule account
 
 ## Installation with HACS
 
@@ -97,6 +98,12 @@ source_time_key: Stunde
 The sensor exposes a single `plan` attribute for the current Monday-Friday week. The week changes automatically based on the current date. Cancelled lessons are included as `Ausfall: <subject>` cells.
 
 Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
+
+### Multiple children
+
+Starting with the `0.6` beta, one beste.schule token can create separate Home Assistant devices for multiple children from the same account. Each child gets its own calendars, sensors and homework to-do list.
+
+This still needs testing with real multi-child accounts. If you use the beta, please check whether timetable, substitutions, homework and grades are correctly separated per child.
 
 ## Roadmap
 
