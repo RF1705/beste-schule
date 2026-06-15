@@ -140,9 +140,9 @@ class BesteSchuleHomeworkTodoList(
         changed = False
         for entry in entries:
             uid = _uid_from_key(entry["key"])
-            stored = _entry_to_storage(entry)
-            if self._history.get(uid) != stored:
-                self._history[uid] = stored
+            history_entry = _entry_to_history(entry)
+            if self._history.get(uid) != history_entry:
+                self._history[uid] = history_entry
                 changed = True
         return changed
 
@@ -196,6 +196,22 @@ def _entry_to_storage(entry: dict[str, Any]) -> dict[str, Any]:
         "key": entry.get("key"),
         "title": entry.get("title"),
         "date": entry_date.isoformat() if isinstance(entry_date, date) else entry_date,
+        "description": entry.get("description"),
+    }
+
+
+def _entry_to_history(entry: dict[str, Any]) -> dict[str, Any]:
+    """Return a normalized in-memory homework entry."""
+    entry_date = entry.get("date")
+    if isinstance(entry_date, str):
+        try:
+            entry_date = date.fromisoformat(entry_date)
+        except ValueError:
+            pass
+    return {
+        "key": entry.get("key"),
+        "title": entry.get("title"),
+        "date": entry_date,
         "description": entry.get("description"),
     }
 
