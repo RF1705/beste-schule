@@ -6,26 +6,27 @@
 [![License](https://img.shields.io/github/license/RF1705/beste-schule)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rf1705-yellow?logo=buymeacoffee)](https://buymeacoffee.com/rf1705)
 
-Home Assistant integration for beste.schule timetables, absences, school time and grade averages.
+Home Assistant integration for beste.schule timetables, absences, homework, exams, school notices, school time and grade averages.
 
-This custom integration connects Home Assistant to [beste.schule](https://beste.schule/) with a Personal Access Token. It creates calendar entries for lessons and absences, exposes the current school-time state and adds grade average sensors per subject.
+This custom integration connects Home Assistant to [beste.schule](https://beste.schule/) with a Personal Access Token. It creates calendar entries for lessons, absences, homework, exams and school-wide notices, exposes the current school-time state and adds grade average sensors per subject.
 
 ## Features
 
 - Timetable calendar with lessons from beste.schule
 - Timetable history keeps past lessons from the setup day onward
 - Absence calendar with all-day absence events
-- Homework calendar beta from visible journal notes
-- Exams calendar beta from visible journal notes
-- Homework to-do list beta from visible journal notes
+- Homework calendar from visible journal notes
+- Exams calendar from visible journal notes
+- School notices calendar for day-wide substitution notes
+- Homework to-do list from visible journal notes
 - School time binary sensor
 - Current lesson and next lesson sensors
 - Grade average sensors per subject
 - Class sensor
 - Timetable JSON sensor for `fabel-smith/stundenplan-card`
 - Options to enable or disable calendars and the homework to-do list
-- English and German translations
-- Beta support for multiple children in one beste.schule account
+- Translations for English, German, Turkish, Polish and other common Home Assistant languages
+- Support for multiple children in one beste.schule account
 
 ## Installation with HACS
 
@@ -73,6 +74,7 @@ The integration currently creates:
 - `calendar`: absences
 - `calendar`: homework
 - `calendar`: exams
+- `calendar`: notices
 - `todo`: homework
 - `binary_sensor`: school time
 - `sensor`: current lesson
@@ -101,13 +103,10 @@ Old test entities from early versions may remain in Home Assistant's entity regi
 
 ### Multiple children
 
-Starting with the `0.6` beta, one beste.schule token can create separate Home Assistant devices for multiple children from the same account. Each child gets its own calendars, sensors and homework to-do list.
-
-This still needs testing with real multi-child accounts. If you use the beta, please check whether timetable, substitutions, homework and grades are correctly separated per child.
+Starting with `0.6`, one beste.schule token can create separate Home Assistant devices for multiple children from the same account. Each child gets its own calendars, sensors and homework to-do list.
 
 ## Roadmap
 
-- Exam and classwork calendar entries
 - More robust substitution details as the API shapes become clearer
 
 ## Support

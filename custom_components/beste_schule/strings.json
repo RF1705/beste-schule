@@ -19,6 +19,7 @@
           "enable_absence_calendar": "Absence calendar",
           "enable_homework_calendar": "Homework calendar",
           "enable_exam_calendar": "Exam calendar",
+          "enable_notice_calendar": "Notices calendar",
           "enable_homework_todo": "Homework to-do list"
         },
         "data_description": {
@@ -26,6 +27,7 @@
           "enable_absence_calendar": "Create a Home Assistant calendar for absences.",
           "enable_homework_calendar": "Create a Home Assistant calendar for homework.",
           "enable_exam_calendar": "Create a Home Assistant calendar for exams and classwork.",
+          "enable_notice_calendar": "Create a Home Assistant calendar for day-wide school notices.",
           "enable_homework_todo": "Create a Home Assistant to-do list for homework."
         }
       }
@@ -48,6 +50,7 @@
           "enable_absence_calendar": "Absence calendar",
           "enable_homework_calendar": "Homework calendar",
           "enable_exam_calendar": "Exam calendar",
+          "enable_notice_calendar": "Notices calendar",
           "enable_homework_todo": "Homework to-do list"
         },
         "data_description": {
@@ -55,6 +58,7 @@
           "enable_absence_calendar": "Create a Home Assistant calendar for absences.",
           "enable_homework_calendar": "Create a Home Assistant calendar for homework.",
           "enable_exam_calendar": "Create a Home Assistant calendar for exams and classwork.",
+          "enable_notice_calendar": "Create a Home Assistant calendar for day-wide school notices.",
           "enable_homework_todo": "Create a Home Assistant to-do list for homework."
         }
       }
@@ -90,6 +94,9 @@
       },
       "exams": {
         "name": "Exams"
+      },
+      "notices": {
+        "name": "Notices"
       }
     },
     "todo": {

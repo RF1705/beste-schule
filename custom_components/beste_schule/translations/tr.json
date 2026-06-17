@@ -19,6 +19,7 @@
           "enable_absence_calendar": "Devamsızlık takvimi",
           "enable_homework_calendar": "Ödev takvimi",
           "enable_exam_calendar": "Sınav takvimi",
+          "enable_notice_calendar": "Duyurular takvimi",
           "enable_homework_todo": "Ödev yapılacaklar listesi"
         },
         "data_description": {
@@ -26,6 +27,7 @@
           "enable_absence_calendar": "Devamsızlıklar için bir Home Assistant takvimi oluşturur.",
           "enable_homework_calendar": "Ödevler için bir Home Assistant takvimi oluşturur.",
           "enable_exam_calendar": "Sınavlar ve yazılılar için bir Home Assistant takvimi oluşturur.",
+          "enable_notice_calendar": "Tüm gün geçerli okul duyuruları için bir Home Assistant takvimi oluşturur.",
           "enable_homework_todo": "Ödevler için bir Home Assistant yapılacaklar listesi oluşturur."
         }
       }
@@ -48,6 +50,7 @@
           "enable_absence_calendar": "Devamsızlık takvimi",
           "enable_homework_calendar": "Ödev takvimi",
           "enable_exam_calendar": "Sınav takvimi",
+          "enable_notice_calendar": "Duyurular takvimi",
           "enable_homework_todo": "Ödev yapılacaklar listesi"
         },
         "data_description": {
@@ -55,6 +58,7 @@
           "enable_absence_calendar": "Devamsızlıklar için bir Home Assistant takvimi oluşturur.",
           "enable_homework_calendar": "Ödevler için bir Home Assistant takvimi oluşturur.",
           "enable_exam_calendar": "Sınavlar ve yazılılar için bir Home Assistant takvimi oluşturur.",
+          "enable_notice_calendar": "Tüm gün geçerli okul duyuruları için bir Home Assistant takvimi oluşturur.",
           "enable_homework_todo": "Ödevler için bir Home Assistant yapılacaklar listesi oluşturur."
         }
       }
@@ -90,6 +94,9 @@
       },
       "exams": {
         "name": "Sınavlar"
+      },
+      "notices": {
+        "name": "Duyurular"
       }
     },
     "todo": {

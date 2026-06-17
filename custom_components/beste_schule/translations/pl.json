@@ -19,6 +19,7 @@
           "enable_absence_calendar": "Kalendarz nieobecności",
           "enable_homework_calendar": "Kalendarz zadań domowych",
           "enable_exam_calendar": "Kalendarz sprawdzianów",
+          "enable_notice_calendar": "Kalendarz powiadomień",
           "enable_homework_todo": "Lista zadań domowych"
         },
         "data_description": {
@@ -26,6 +27,7 @@
           "enable_absence_calendar": "Tworzy kalendarz Home Assistant dla nieobecności.",
           "enable_homework_calendar": "Tworzy kalendarz Home Assistant dla zadań domowych.",
           "enable_exam_calendar": "Tworzy kalendarz Home Assistant dla sprawdzianów i prac klasowych.",
+          "enable_notice_calendar": "Tworzy kalendarz Home Assistant dla całodniowych informacji szkolnych.",
           "enable_homework_todo": "Tworzy listę zadań Home Assistant dla zadań domowych."
         }
       }
@@ -48,6 +50,7 @@
           "enable_absence_calendar": "Kalendarz nieobecności",
           "enable_homework_calendar": "Kalendarz zadań domowych",
           "enable_exam_calendar": "Kalendarz sprawdzianów",
+          "enable_notice_calendar": "Kalendarz powiadomień",
           "enable_homework_todo": "Lista zadań domowych"
         },
         "data_description": {
@@ -55,6 +58,7 @@
           "enable_absence_calendar": "Tworzy kalendarz Home Assistant dla nieobecności.",
           "enable_homework_calendar": "Tworzy kalendarz Home Assistant dla zadań domowych.",
           "enable_exam_calendar": "Tworzy kalendarz Home Assistant dla sprawdzianów i prac klasowych.",
+          "enable_notice_calendar": "Tworzy kalendarz Home Assistant dla całodniowych informacji szkolnych.",
           "enable_homework_todo": "Tworzy listę zadań Home Assistant dla zadań domowych."
         }
       }
@@ -90,6 +94,9 @@
       },
       "exams": {
         "name": "Sprawdziany"
+      },
+      "notices": {
+        "name": "Powiadomienia"
       }
     },
     "todo": {

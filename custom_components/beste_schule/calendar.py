@@ -20,6 +20,7 @@ from .const import (
     CONF_ENABLE_ABSENCE_CALENDAR,
     CONF_ENABLE_EXAM_CALENDAR,
     CONF_ENABLE_HOMEWORK_CALENDAR,
+    CONF_ENABLE_NOTICE_CALENDAR,
     CONF_ENABLE_TIMETABLE_CALENDAR,
     DEFAULT_OPTIONS,
     DOMAIN,
@@ -126,6 +127,8 @@ async def async_setup_entry(
             entities.append(BesteSchuleHomeworkCalendar(entry, coordinator))
         if options[CONF_ENABLE_EXAM_CALENDAR]:
             entities.append(BesteSchuleExamCalendar(entry, coordinator))
+        if options[CONF_ENABLE_NOTICE_CALENDAR]:
+            entities.append(BesteSchuleNoticeCalendar(entry, coordinator))
     async_add_entities(entities)
 
 
@@ -937,6 +940,53 @@ def _homework_events(
     return events
 
 
+def _notice_events(
+    data: dict[str, Any],
+    start_date: datetime,
+    end_date: datetime,
+) -> list[CalendarEvent]:
+    """Convert school-wide substitution day notes into all-day calendar events."""
+    events: list[CalendarEvent] = []
+    seen: set[str] = set()
+    school_name = school_name_from_data(data)
+    for item in _iter_values(data.get("substitution_days")):
+        if not isinstance(item, dict):
+            continue
+
+        if _find_direct_value(item, LESSON_NR_KEYS) is not None:
+            continue
+
+        notice_date = _parse_date(_find_value(item, DATE_KEYS))
+        notes = item.get("notes")
+        if notice_date is None or not isinstance(notes, list):
+            continue
+
+        event_start = notice_date
+        event_end = notice_date + timedelta(days=1)
+        if event_end <= start_date.date() or event_start >= end_date.date():
+            continue
+
+        for note in notes:
+            text = _extract_text(note)
+            if not text:
+                continue
+            key = f"{notice_date.isoformat()}|{text}"
+            if key in seen:
+                continue
+            seen.add(key)
+            events.append(
+                CalendarEvent(
+                    summary=text,
+                    start=event_start,
+                    end=event_end,
+                    location=school_name,
+                )
+            )
+
+    events.sort(key=lambda event: (event.start, event.summary))
+    return events
+
+
 def _homework_entries(
     data: dict[str, Any],
     start_date: datetime,
@@ -1420,3 +1470,42 @@ class BesteSchuleExamCalendar(
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
         return _exam_events(self.coordinator.data, start_date, end_date)
+
+
+class BesteSchuleNoticeCalendar(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], CalendarEntity
+):
+    """Calendar for school-wide beste.schule day notices."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "notices"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_notices"
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        """Return the current or next upcoming event."""
+        now = dt_util.now()
+        events = _notice_events(self.coordinator.data, now, now + timedelta(days=60))
+        return events[0] if events else None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        """Return calendar events within a datetime range."""
+        return _notice_events(self.coordinator.data, start_date, end_date)

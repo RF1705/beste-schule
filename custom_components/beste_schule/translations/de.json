@@ -19,6 +19,7 @@
           "enable_absence_calendar": "Abwesenheiten-Kalender",
           "enable_homework_calendar": "Hausaufgaben-Kalender",
           "enable_exam_calendar": "Arbeiten-Kalender",
+          "enable_notice_calendar": "Hinweise-Kalender",
           "enable_homework_todo": "Hausaufgaben-To-do-Liste"
         },
         "data_description": {
@@ -26,6 +27,7 @@
           "enable_absence_calendar": "Erstellt einen Home-Assistant-Kalender für Abwesenheiten.",
           "enable_homework_calendar": "Erstellt einen Home-Assistant-Kalender für Hausaufgaben.",
           "enable_exam_calendar": "Erstellt einen Home-Assistant-Kalender für Arbeiten, LK und Tests.",
+          "enable_notice_calendar": "Erstellt einen Home-Assistant-Kalender für schulweite Tageshinweise.",
           "enable_homework_todo": "Erstellt eine Home-Assistant-To-do-Liste für Hausaufgaben."
         }
       }
@@ -48,6 +50,7 @@
           "enable_absence_calendar": "Abwesenheiten-Kalender",
           "enable_homework_calendar": "Hausaufgaben-Kalender",
           "enable_exam_calendar": "Arbeiten-Kalender",
+          "enable_notice_calendar": "Hinweise-Kalender",
           "enable_homework_todo": "Hausaufgaben-To-do-Liste"
         },
         "data_description": {
@@ -55,6 +58,7 @@
           "enable_absence_calendar": "Erstellt einen Home-Assistant-Kalender für Abwesenheiten.",
           "enable_homework_calendar": "Erstellt einen Home-Assistant-Kalender für Hausaufgaben.",
           "enable_exam_calendar": "Erstellt einen Home-Assistant-Kalender für Arbeiten, LK und Tests.",
+          "enable_notice_calendar": "Erstellt einen Home-Assistant-Kalender für schulweite Tageshinweise.",
           "enable_homework_todo": "Erstellt eine Home-Assistant-To-do-Liste für Hausaufgaben."
         }
       }
@@ -90,6 +94,9 @@
       },
       "exams": {
         "name": "Arbeiten"
+      },
+      "notices": {
+        "name": "Hinweise"
       }
     },
     "todo": {

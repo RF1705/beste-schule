@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 import voluptuous as vol
@@ -15,6 +16,7 @@ from .const import (
     CONF_ENABLE_EXAM_CALENDAR,
     CONF_ENABLE_HOMEWORK_CALENDAR,
     CONF_ENABLE_HOMEWORK_TODO,
+    CONF_ENABLE_NOTICE_CALENDAR,
     CONF_ENABLE_TIMETABLE_CALENDAR,
     CONF_TOKEN,
     DEFAULT_API_URL,
@@ -29,6 +31,7 @@ OPTION_KEYS = (
     CONF_ENABLE_ABSENCE_CALENDAR,
     CONF_ENABLE_HOMEWORK_CALENDAR,
     CONF_ENABLE_EXAM_CALENDAR,
+    CONF_ENABLE_NOTICE_CALENDAR,
     CONF_ENABLE_HOMEWORK_TODO,
 )
 
@@ -99,6 +102,20 @@ def _first_name_from_data(data: Any) -> str | None:
     return None
 
 
+def _token_unique_id(token: str) -> str:
+    """Return a stable unique id for one token without storing it in plain text."""
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return f"token_{digest}"
+
+
+def _token_already_configured(
+    entries: list[config_entries.ConfigEntry],
+    token: str,
+) -> bool:
+    """Return whether this exact token is already configured."""
+    return any(entry.data.get(CONF_TOKEN) == token for entry in entries)
+
+
 async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> str:
     """Validate the entered token."""
     api = BesteSchuleApi(hass, DEFAULT_API_URL, data[CONF_TOKEN])
@@ -128,6 +145,7 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            token = user_input[CONF_TOKEN]
             try:
                 title = await _validate_input(self.hass, user_input)
             except BesteSchuleAuthError:
@@ -135,9 +153,11 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except BesteSchuleApiError:
                 errors["base"] = "cannot_connect"
             else:
-                await self.async_set_unique_id("beste_schule")
+                if _token_already_configured(self._async_current_entries(), token):
+                    return self.async_abort(reason="already_configured")
+                await self.async_set_unique_id(_token_unique_id(token))
                 self._abort_if_unique_id_configured()
-                self._token = user_input[CONF_TOKEN]
+                self._token = token
                 self._title = title
                 return await self.async_step_features()
 
