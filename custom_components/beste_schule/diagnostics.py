@@ -16,17 +16,15 @@ from .coordinator import coordinators_for_entry
 from .entity import school_name_from_data, student_id_from_data, student_name_from_data
 from .sensor import (
     _api_average,
-    _average,
     _data_list,
     _grade_kind_text,
     _grade_subjects,
     _is_classwork,
     _formula_average,
+    _subject_calculation_rule,
     _parse_grade,
-    _school_round,
     _subject_grade_values,
     _subject_name,
-    _weighted_grade_average,
 )
 
 MAX_LIST_ITEMS = 3
@@ -276,14 +274,12 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for subject in _grade_subjects(data):
         api_average = _api_average(data, subject)
+        api_rule = _subject_calculation_rule(data, subject)
         formula_average, calculation_rule, formula_variables = _formula_average(
             data,
             subject,
         )
         classwork_values, other_values = _subject_grade_values(data, subject)
-        classwork_average = _average(classwork_values)
-        other_average = _average(other_values)
-        calculated_average = _weighted_grade_average(classwork_values, other_values)
 
         result[subject] = {
             "sensor_value": (
@@ -291,19 +287,19 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
                 if api_average is not None
                 else round(formula_average, 2)
                 if formula_average is not None
-                else round(calculated_average, 2)
-                if calculated_average is not None
                 else None
             ),
             "source": (
                 "api_value"
                 if api_average is not None
                 else "api_formula"
+                if api_rule is not None and formula_average is not None
+                else "weighted_fallback"
                 if formula_average is not None
-                else "fallback"
+                else "unavailable"
             ),
-            "api_average": round(api_average, 2) if api_average is not None else None,
             "calculation_rule": calculation_rule,
+            "calculation_rule_source": "api" if api_rule is not None else "fallback",
             "formula_result": (
                 round(formula_average, 2)
                 if formula_average is not None
@@ -313,31 +309,8 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
                 key: round(value, 4)
                 for key, value in formula_variables.items()
             },
-            "calculated_average": (
-                round(calculated_average, 2)
-                if calculated_average is not None
-                else None
-            ),
-            "rounded_grade": (
-                _school_round(calculated_average, classwork_average, other_average)
-                if calculated_average is not None
-                else None
-            ),
             "classwork_values": classwork_values,
             "other_values": other_values,
-            "classwork_average": (
-                round(classwork_average, 2)
-                if classwork_average is not None
-                else None
-            ),
-            "classwork_weight": 2,
-            "other_average": (
-                round(other_average, 2)
-                if other_average is not None
-                else None
-            ),
-            "other_weight": 1,
-            "weighting_method": "classwork grades count twice",
             "grade_items": _grade_items_for_subject(data, subject),
             "finalgrade_items": _finalgrade_items_for_subject(data, subject),
         }

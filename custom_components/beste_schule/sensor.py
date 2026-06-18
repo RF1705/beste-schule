@@ -162,12 +162,13 @@ def _formula_average(
     data: dict[str, Any],
     subject: str,
 ) -> tuple[float | None, str | None, dict[str, float]]:
-    """Calculate a subject average from a student-visible API rule."""
-    rule = _subject_calculation_rule(data, subject)
-    if rule is None:
-        return None, None, {}
-
+    """Calculate a subject average from an API rule or weighted fallback."""
     variables = _grade_formula_variables(data, subject)
+    rule = _subject_calculation_rule(data, subject) or _fallback_calculation_rule(
+        variables
+    )
+    if rule is None:
+        return None, None, variables
     try:
         value = _evaluate_formula(rule, variables)
     except (ValueError, ZeroDivisionError):
@@ -195,6 +196,27 @@ def _subject_calculation_rule(data: dict[str, Any], subject: str) -> str | None:
             interval_id = 0
         candidates.append((interval_id, rule))
     return max(candidates, default=(0, None))[1]
+
+
+def _fallback_calculation_rule(variables: dict[str, float]) -> str | None:
+    """Return a weighted fallback rule for the available grade categories."""
+    if variables.get("so_count", 0) and variables.get("ka_count", 0):
+        return "0.5*((So_sum)/(So_count))+0.5*((Ka_sum)/(Ka_count))"
+
+    categories = sorted(
+        key.removesuffix("_count")
+        for key, value in variables.items()
+        if key.endswith("_count") and value > 0
+    )
+    if not categories:
+        return None
+    if len(categories) == 1:
+        category = categories[0]
+        return f"1*(({category}_sum)/({category}_count))"
+
+    sums = "+".join(f"{category}_sum" for category in categories)
+    counts = "+".join(f"{category}_count" for category in categories)
+    return f"({sums})/({counts})"
 
 
 def _grade_formula_variables(
@@ -308,41 +330,6 @@ def _is_classwork(grade: dict[str, Any]) -> bool:
     """Return whether a grade should count as classwork."""
     words = set(re.findall(r"[a-zäöüß]+", _grade_kind_text(grade)))
     return any(marker in words for marker in CLASSWORK_MARKERS)
-
-
-def _average(values: list[float]) -> float | None:
-    """Return the average of values."""
-    if not values:
-        return None
-    return sum(values) / len(values)
-
-
-def _weighted_grade_average(
-    classwork_values: list[float],
-    other_values: list[float],
-) -> float | None:
-    """Return average with every classwork grade counted twice."""
-    weighted_count = (len(classwork_values) * 2) + len(other_values)
-    if weighted_count == 0:
-        return None
-    weighted_sum = (sum(classwork_values) * 2) + sum(other_values)
-    return weighted_sum / weighted_count
-
-
-def _school_round(value: float, classwork_average: float | None, other_average: float | None) -> int:
-    """Round a school grade, resolving .5 towards the classwork average."""
-    lower = int(value)
-    fraction = value - lower
-    if (
-        abs(fraction - 0.5) < 0.00001
-        and classwork_average is not None
-        and other_average is not None
-    ):
-        if classwork_average < other_average:
-            return lower
-        if classwork_average > other_average:
-            return lower + 1
-    return int(value + 0.5)
 
 
 def _subject_grade_values(
@@ -762,30 +749,18 @@ class BesteSchuleGradeAverageSensor(
         )
         if formula_average is not None:
             return round(formula_average, 2)
-
-        classwork_values, other_values = self._grouped_values
-        classwork_average = _average(classwork_values)
-        other_average = _average(other_values)
-
-        calculated_average = _weighted_grade_average(classwork_values, other_values)
-
-        if calculated_average is None:
-            return None
-
-        return round(calculated_average, 2)
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return details for the grade average."""
         api_average = _api_average(self.coordinator.data, self._subject)
+        api_rule = _subject_calculation_rule(self.coordinator.data, self._subject)
         formula_average, calculation_rule, formula_variables = _formula_average(
             self.coordinator.data,
             self._subject,
         )
         classwork_values, other_values = self._grouped_values
-        classwork_average = _average(classwork_values)
-        other_average = _average(other_values)
-        calculated_average = _weighted_grade_average(classwork_values, other_values)
 
         return {
             "subject": self._subject,
@@ -793,11 +768,13 @@ class BesteSchuleGradeAverageSensor(
                 "api_value"
                 if api_average is not None
                 else "api_formula"
+                if api_rule is not None and formula_average is not None
+                else "weighted_fallback"
                 if formula_average is not None
-                else "fallback"
+                else "unavailable"
             ),
-            "api_average": round(api_average, 2) if api_average is not None else None,
             "calculation_rule": calculation_rule,
+            "calculation_rule_source": "api" if api_rule is not None else "fallback",
             "formula_result": (
                 round(formula_average, 2)
                 if formula_average is not None
@@ -810,14 +787,6 @@ class BesteSchuleGradeAverageSensor(
             "count": len(classwork_values) + len(other_values),
             "classwork_count": len(classwork_values),
             "other_count": len(other_values),
-            "classwork_average": round(classwork_average, 2) if classwork_average is not None else None,
-            "other_average": round(other_average, 2) if other_average is not None else None,
-            "calculated_average": round(calculated_average, 2) if calculated_average is not None else None,
-            "rounded_grade": (
-                _school_round(calculated_average, classwork_average, other_average)
-                if calculated_average is not None
-                else None
-            ),
             "classwork_grades": classwork_values,
             "other_grades": other_values,
         }
