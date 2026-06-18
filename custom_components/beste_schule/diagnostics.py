@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.util import dt as dt_util
 
+from .calendar import _lesson_events
 from .const import CONF_SCHOOL_NAME, CONF_TOKEN, DOMAIN
 from .coordinator import coordinators_for_entry
 from .entity import school_name_from_data, student_id_from_data, student_name_from_data
@@ -138,7 +141,61 @@ def _child_diagnostics(
         "grade_debug": _grade_debug(data),
         "homework_debug": _homework_debug(data),
         "substitution_debug": _substitution_debug(data),
+        "timetable_debug": _timetable_debug(data),
+        "generated_timetable_debug": _generated_timetable_debug(data),
     }
+
+
+def _timetable_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every regular timetable lesson without diagnostic sampling."""
+    timetable = data.get("time_tables_current")
+    timetable_data = timetable.get("data") if isinstance(timetable, dict) else None
+    lessons = timetable_data.get("lessons") if isinstance(timetable_data, dict) else None
+    if not isinstance(lessons, list):
+        return []
+
+    return [
+        {
+            "weekday": lesson.get("weekday"),
+            "nr": lesson.get("nr"),
+            "subject": _relation_debug(lesson.get("subject")),
+            "group": _relation_debug(lesson.get("group")),
+            "weeks": lesson.get("weeks"),
+            "rooms": [
+                _relation_debug(room)
+                for room in lesson.get("rooms", [])
+                if isinstance(room, dict)
+            ],
+            "teachers": [
+                _relation_debug(teacher)
+                for teacher in lesson.get("teachers", [])
+                if isinstance(teacher, dict)
+            ],
+        }
+        for lesson in lessons
+        if isinstance(lesson, dict)
+    ]
+
+
+def _generated_timetable_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the timetable events generated for the next three weeks."""
+    start = dt_util.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    events = _lesson_events(
+        data,
+        start,
+        start + timedelta(days=21),
+        include_cancelled=True,
+    )
+    return [
+        {
+            "summary": event.summary,
+            "start": event.start.isoformat(),
+            "end": event.end.isoformat(),
+            "location": event.location,
+            "description": event.description,
+        }
+        for event in events
+    ]
 
 
 def _substitution_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
