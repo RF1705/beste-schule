@@ -21,6 +21,7 @@ from .sensor import (
     _grade_kind_text,
     _grade_subjects,
     _is_classwork,
+    _formula_average,
     _parse_grade,
     _school_round,
     _subject_grade_values,
@@ -275,6 +276,10 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for subject in _grade_subjects(data):
         api_average = _api_average(data, subject)
+        formula_average, calculation_rule, formula_variables = _formula_average(
+            data,
+            subject,
+        )
         classwork_values, other_values = _subject_grade_values(data, subject)
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
@@ -284,12 +289,30 @@ def _grade_debug(data: dict[str, Any]) -> dict[str, Any]:
             "sensor_value": (
                 round(api_average, 2)
                 if api_average is not None
+                else round(formula_average, 2)
+                if formula_average is not None
                 else round(calculated_average, 2)
                 if calculated_average is not None
                 else None
             ),
-            "source": "api" if api_average is not None else "calculated",
+            "source": (
+                "api_value"
+                if api_average is not None
+                else "api_formula"
+                if formula_average is not None
+                else "fallback"
+            ),
             "api_average": round(api_average, 2) if api_average is not None else None,
+            "calculation_rule": calculation_rule,
+            "formula_result": (
+                round(formula_average, 2)
+                if formula_average is not None
+                else None
+            ),
+            "formula_variables": {
+                key: round(value, 4)
+                for key, value in formula_variables.items()
+            },
             "calculated_average": (
                 round(calculated_average, 2)
                 if calculated_average is not None

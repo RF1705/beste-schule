@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+import operator
 import re
 from datetime import timedelta
 from typing import Any
@@ -37,6 +39,13 @@ CLASSWORK_MARKERS = (
     "schulaufgabe",
     "klausur",
 )
+
+FORMULA_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+}
 
 
 async def async_setup_entry(
@@ -147,6 +156,105 @@ def _api_average(data: dict[str, Any], subject: str) -> float | None:
             if value is not None and 1 <= value <= 6:
                 return value
     return None
+
+
+def _formula_average(
+    data: dict[str, Any],
+    subject: str,
+) -> tuple[float | None, str | None, dict[str, float]]:
+    """Calculate a subject average from a student-visible API rule."""
+    rule = _subject_calculation_rule(data, subject)
+    if rule is None:
+        return None, None, {}
+
+    variables = _grade_formula_variables(data, subject)
+    try:
+        value = _evaluate_formula(rule, variables)
+    except (ValueError, ZeroDivisionError):
+        return None, rule, variables
+    return (value if 1 <= value <= 6 else None), rule, variables
+
+
+def _subject_calculation_rule(data: dict[str, Any], subject: str) -> str | None:
+    """Return the newest visible finalgrade calculation rule."""
+    details = data.get("finalgrade_details")
+    if not isinstance(details, dict):
+        return None
+
+    candidates: list[tuple[int, str]] = []
+    for response in details.values():
+        item = response.get("data") if isinstance(response, dict) else None
+        if not isinstance(item, dict) or _subject_name(item) != subject:
+            continue
+        rule = item.get("calculation_rule")
+        if item.get("calculation_for") != "student" or not isinstance(rule, str):
+            continue
+        try:
+            interval_id = int(item.get("interval_id", 0))
+        except (TypeError, ValueError):
+            interval_id = 0
+        candidates.append((interval_id, rule))
+    return max(candidates, default=(0, None))[1]
+
+
+def _grade_formula_variables(
+    data: dict[str, Any],
+    subject: str,
+) -> dict[str, float]:
+    """Build weighted category sums and counts from grade collections."""
+    categories: dict[str, list[float]] = {}
+    for item in _data_list(data.get("grades")):
+        if not isinstance(item, dict) or _subject_name(item) != subject:
+            continue
+        value = _parse_grade(item.get("value"))
+        collection = item.get("collection")
+        if value is None or not isinstance(collection, dict):
+            continue
+        category = _text_value(collection.get("type"))
+        if not category:
+            continue
+        weight = _parse_decimal(collection.get("weighting")) or 1.0
+        if weight <= 0:
+            continue
+        totals = categories.setdefault(category.casefold(), [0.0, 0.0])
+        totals[0] += value * weight
+        totals[1] += weight
+
+    variables: dict[str, float] = {}
+    for category, (weighted_sum, weighted_count) in categories.items():
+        variables[f"{category}_sum"] = weighted_sum
+        variables[f"{category}_count"] = weighted_count
+    return variables
+
+
+def _evaluate_formula(rule: str, variables: dict[str, float]) -> float:
+    """Evaluate numbers, variables and basic arithmetic only."""
+    try:
+        expression = ast.parse(rule, mode="eval")
+    except SyntaxError as err:
+        raise ValueError("Invalid calculation rule") from err
+
+    def evaluate(node: ast.AST) -> float:
+        if isinstance(node, ast.Expression):
+            return evaluate(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return float(node.value)
+        if isinstance(node, ast.Name):
+            try:
+                return variables[node.id.casefold()]
+            except KeyError as err:
+                raise ValueError(f"Unknown variable: {node.id}") from err
+        if isinstance(node, ast.BinOp) and type(node.op) in FORMULA_OPERATORS:
+            return FORMULA_OPERATORS[type(node.op)](
+                evaluate(node.left),
+                evaluate(node.right),
+            )
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            value = evaluate(node.operand)
+            return value if isinstance(node.op, ast.UAdd) else -value
+        raise ValueError("Unsupported calculation rule")
+
+    return evaluate(expression)
 
 
 def _grade_kind_text(grade: dict[str, Any]) -> str:
@@ -648,6 +756,13 @@ class BesteSchuleGradeAverageSensor(
         if api_average is not None:
             return round(api_average, 2)
 
+        formula_average, _, _ = _formula_average(
+            self.coordinator.data,
+            self._subject,
+        )
+        if formula_average is not None:
+            return round(formula_average, 2)
+
         classwork_values, other_values = self._grouped_values
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
@@ -663,6 +778,10 @@ class BesteSchuleGradeAverageSensor(
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return details for the grade average."""
         api_average = _api_average(self.coordinator.data, self._subject)
+        formula_average, calculation_rule, formula_variables = _formula_average(
+            self.coordinator.data,
+            self._subject,
+        )
         classwork_values, other_values = self._grouped_values
         classwork_average = _average(classwork_values)
         other_average = _average(other_values)
@@ -670,8 +789,24 @@ class BesteSchuleGradeAverageSensor(
 
         return {
             "subject": self._subject,
-            "source": "api" if api_average is not None else "calculated",
+            "source": (
+                "api_value"
+                if api_average is not None
+                else "api_formula"
+                if formula_average is not None
+                else "fallback"
+            ),
             "api_average": round(api_average, 2) if api_average is not None else None,
+            "calculation_rule": calculation_rule,
+            "formula_result": (
+                round(formula_average, 2)
+                if formula_average is not None
+                else None
+            ),
+            "formula_variables": {
+                key: round(value, 4)
+                for key, value in formula_variables.items()
+            },
             "count": len(classwork_values) + len(other_values),
             "classwork_count": len(classwork_values),
             "other_count": len(other_values),
