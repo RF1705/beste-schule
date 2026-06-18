@@ -132,6 +132,7 @@ def _child_diagnostics(
             key: _sample(value)
             for key, value in data.items()
             if key in {"school", "students", "selected_student"}
+            or key == "groups"
             or key.startswith("time_")
             or key.startswith("journal_")
             or key == "substitution_days"

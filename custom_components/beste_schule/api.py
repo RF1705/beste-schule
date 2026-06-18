@@ -132,6 +132,14 @@ class BesteSchuleApi:
         student_filter = {"filter[student]": student_id} if student_id is not None else {}
 
         routes = {
+            "groups": (
+                "groups",
+                {
+                    **student_filter,
+                    "include": "students",
+                    "per_page": 100,
+                },
+            ),
             "time_tables_current": ("time-tables/current", None),
             "journal_weeks": (
                 (
@@ -260,11 +268,35 @@ def _student_count(students: Any) -> int:
 
 def _filter_overview_for_student(data: dict[str, Any], student: dict[str, Any]) -> None:
     """Keep only data that belongs to the selected student where the API returns mixed data."""
-    _filter_timetable(data.get("time_tables_current"), student)
-    _filter_substitution_days(data.get("substitution_days"), student)
-    _filter_journal_weeks(data.get("journal_weeks"), student)
+    student_context = _student_context_with_groups(student, data.get("groups"))
+    _filter_timetable(data.get("time_tables_current"), student_context)
+    _filter_substitution_days(data.get("substitution_days"), student_context)
+    _filter_journal_weeks(data.get("journal_weeks"), student_context)
     for key in ("journal_lesson_student", "journal_day_student", "grades", "finalgrades"):
-        _filter_data_list(data.get(key), student)
+        _filter_data_list(data.get(key), student_context)
+
+
+def _student_context_with_groups(
+    student: dict[str, Any],
+    groups_response: Any,
+) -> dict[str, Any]:
+    """Return student data enriched with groups from the groups API."""
+    context = dict(student)
+    existing = student.get("meta_groups")
+    groups = [
+        group
+        for group in _response_data(groups_response) or []
+        if isinstance(group, dict)
+    ]
+    if isinstance(existing, list):
+        groups = [*existing, *groups]
+
+    unique_groups: dict[str, dict[str, Any]] = {}
+    for group in groups:
+        key = str(group.get("id") or group.get("local_id") or group.get("name"))
+        unique_groups[key] = group
+    context["meta_groups"] = list(unique_groups.values())
+    return context
 
 
 def _filter_timetable(value: Any, student: dict[str, Any]) -> None:
