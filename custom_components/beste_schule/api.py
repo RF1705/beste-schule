@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import re
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError
@@ -341,8 +342,32 @@ def _item_matches_student_context(item: Any, student: dict[str, Any]) -> bool:
     group_values = _student_group_values(student)
     item_groups = _item_group_values(item)
     if item_groups:
-        return bool(group_values & item_groups)
+        return bool(group_values & item_groups) or _matches_student_subgroup(
+            group_values,
+            item_groups,
+        )
     return True
+
+
+def _matches_student_subgroup(
+    student_groups: set[str],
+    item_groups: set[str],
+) -> bool:
+    """Return whether a subject group belongs to the student's main class."""
+    class_signatures = {
+        match.groups()
+        for value in student_groups
+        if (match := re.fullmatch(r"(\d+)\s*([a-z])", value))
+    }
+    if not class_signatures:
+        return False
+
+    for value in item_groups:
+        compact = re.sub(r"[^a-z0-9]", "", value)
+        for year, class_letter in class_signatures:
+            if compact.startswith(year) and compact.endswith(class_letter):
+                return True
+    return False
 
 
 def _item_student_id(value: Any) -> str | None:
