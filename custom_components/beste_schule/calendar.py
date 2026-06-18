@@ -743,8 +743,134 @@ def _lesson_events(
                         )
                     )
 
+    _apply_dated_substitution_lessons(
+        data,
+        events,
+        start_date,
+        end_date,
+        period_map,
+        include_cancelled,
+    )
     events.sort(key=lambda event: _event_sort_value(event.start))
     return events
+
+
+def _apply_dated_substitution_lessons(
+    data: dict[str, Any],
+    events: list[CalendarEvent],
+    start_date: datetime,
+    end_date: datetime,
+    period_map: dict[int, tuple[time, time]],
+    include_cancelled: bool,
+) -> None:
+    """Replace weekly-plan slots with authoritative dated substitution lessons."""
+    source = data.get("substitution_days")
+    days = source.get("data") if isinstance(source, dict) else source
+    if not isinstance(days, list):
+        return
+
+    school_name = school_name_from_data(data)
+    for day_item in days:
+        if not isinstance(day_item, dict):
+            continue
+        lesson_date = _parse_date(day_item.get("date"))
+        lessons = day_item.get("lessons")
+        if lesson_date is None or not isinstance(lessons, list):
+            continue
+
+        for lesson in lessons:
+            if not isinstance(lesson, dict):
+                continue
+            number = _find_direct_value(lesson, LESSON_NR_KEYS)
+            try:
+                start_time, end_time = period_map[int(number)]
+            except (KeyError, TypeError, ValueError):
+                continue
+
+            event_start = _local_datetime(lesson_date, start_time)
+            event_end = _local_datetime(lesson_date, end_time)
+            if event_end <= start_date or event_start >= end_date:
+                continue
+
+            original = next(
+                (
+                    event
+                    for event in events
+                    if event.start == event_start and event.end == event_end
+                ),
+                None,
+            )
+            events[:] = [
+                event
+                for event in events
+                if event.start != event_start or event.end != event_end
+            ]
+
+            title = _find_text(lesson, TITLE_KEYS) or _find_nested_text(
+                lesson,
+                TITLE_KEYS,
+            )
+            if not title:
+                continue
+
+            status = str(lesson.get("status", "")).lower()
+            cancelled = status in {"cancelled", "canceled", "ausfall", "free"}
+            if cancelled and not include_cancelled:
+                continue
+
+            location = _direct_relation_text(lesson, ROOM_KEYS, _room_text)
+            teacher = _direct_relation_text(lesson, TEACHER_KEYS, _teacher_text)
+            locations = _direct_relation_texts(lesson, ROOM_KEYS, _room_text)
+            teachers = _direct_relation_texts(lesson, TEACHER_KEYS, _teacher_text)
+            original_location = _description_value(original, "Raum")
+            original_teacher = _description_value(original, "Lehrer")
+            if status in {"planned", "substitution", "vertretung"}:
+                location = _replacement_room_text(locations, original_location) or location
+                teacher = _replacement_teacher_text(teachers, original_teacher) or teacher
+
+            if cancelled:
+                summary = f"Ausfall: {title}"
+                description_parts = ["Status: Ausfall"]
+            elif status in {"planned", "substitution", "vertretung"}:
+                summary = title
+                original_title = (
+                    original.summary.removeprefix("Ausfall: ").strip()
+                    if original is not None
+                    else title
+                )
+                description_parts = [f"Vertretung für: {original_title}"]
+            else:
+                summary = title
+                description_parts = []
+
+            if location:
+                description_parts.append(f"Raum: {location}")
+            if teacher:
+                description_parts.append(f"Lehrer: {teacher}")
+            notes = _extract_text(lesson.get("notes"))
+            if notes:
+                description_parts.append(notes)
+
+            events.append(
+                CalendarEvent(
+                    summary=summary,
+                    start=event_start,
+                    end=event_end,
+                    location=school_name or location,
+                    description="\n".join(description_parts) or None,
+                )
+            )
+
+
+def _description_value(event: CalendarEvent | None, label: str) -> str | None:
+    """Return a labelled value from an existing event description."""
+    if event is None or not event.description:
+        return None
+    prefix = f"{label}:"
+    for line in event.description.splitlines():
+        if line.startswith(prefix):
+            return line.removeprefix(prefix).strip() or None
+    return None
 
 
 def _event_sort_value(value: date | datetime) -> datetime:

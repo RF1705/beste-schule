@@ -199,7 +199,7 @@ def _generated_timetable_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _substitution_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return focused diagnostics for planned substitutions."""
+    """Return focused diagnostics for all dated substitution-plan lessons."""
     result: list[dict[str, Any]] = []
     source = data.get("substitution_days")
     days = source.get("data") if isinstance(source, dict) else source
@@ -216,8 +216,6 @@ def _substitution_debug(data: dict[str, Any]) -> list[dict[str, Any]]:
             if not isinstance(lesson, dict):
                 continue
             status = lesson.get("status")
-            if status != "planned":
-                continue
             result.append(
                 {
                     "date": day.get("date") or _nested_value(lesson.get("day"), "date"),
