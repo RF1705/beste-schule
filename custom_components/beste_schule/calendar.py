@@ -822,8 +822,22 @@ def _apply_dated_substitution_lessons(
             teacher = _direct_relation_text(lesson, TEACHER_KEYS, _teacher_text)
             locations = _direct_relation_texts(lesson, ROOM_KEYS, _room_text)
             teachers = _direct_relation_texts(lesson, TEACHER_KEYS, _teacher_text)
-            original_location = _description_value(original, "Raum")
-            original_teacher = _description_value(original, "Lehrer")
+            regular_lesson = _regular_lesson_for_slot(data, lesson_date, number)
+            original_title = (
+                _find_nested_text(regular_lesson, TITLE_KEYS)
+                if regular_lesson is not None
+                else None
+            )
+            original_location = (
+                _find_nested_relation_text(regular_lesson, ROOM_KEYS, _room_text)
+                if regular_lesson is not None
+                else _description_value(original, "Raum")
+            )
+            original_teacher = (
+                _find_nested_relation_text(regular_lesson, TEACHER_KEYS, _teacher_text)
+                if regular_lesson is not None
+                else _description_value(original, "Lehrer")
+            )
             if status in {"planned", "substitution", "vertretung"}:
                 location = _replacement_room_text(locations, original_location) or location
                 teacher = _replacement_teacher_text(teachers, original_teacher) or teacher
@@ -833,12 +847,7 @@ def _apply_dated_substitution_lessons(
                 description_parts = ["Status: Ausfall"]
             elif status in {"planned", "substitution", "vertretung"}:
                 summary = title
-                original_title = (
-                    original.summary.removeprefix("Ausfall: ").strip()
-                    if original is not None
-                    else title
-                )
-                description_parts = [f"Vertretung für: {original_title}"]
+                description_parts = [f"Vertretung für: {original_title or title}"]
             else:
                 summary = title
                 description_parts = []
@@ -860,6 +869,36 @@ def _apply_dated_substitution_lessons(
                     description="\n".join(description_parts) or None,
                 )
             )
+
+
+def _regular_lesson_for_slot(
+    data: dict[str, Any],
+    lesson_date: date,
+    number: Any,
+) -> dict[str, Any] | None:
+    """Return the weekly-plan lesson for a concrete date and lesson number."""
+    timetable = _timetable_data(data)
+    lessons = timetable.get("lessons")
+    if not isinstance(lessons, list):
+        return None
+
+    try:
+        expected_number = int(number)
+    except (TypeError, ValueError):
+        return None
+
+    for lesson in lessons:
+        if not isinstance(lesson, dict):
+            continue
+        weekday = _parse_weekday(_find_direct_value(lesson, WEEKDAY_KEYS))
+        lesson_number = _find_direct_value(lesson, LESSON_NR_KEYS)
+        try:
+            matches_number = int(lesson_number) == expected_number
+        except (TypeError, ValueError):
+            matches_number = False
+        if weekday == lesson_date.weekday() and matches_number:
+            return lesson
+    return None
 
 
 def _description_value(event: CalendarEvent | None, label: str) -> str | None:
