@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import re
 from typing import Any
@@ -207,9 +208,39 @@ class BesteSchuleApi:
 
         for key, route_info in routes.items():
             data[key] = await self._request_first_available(route_info)
+        data["finalgrade_details"] = await self._fetch_finalgrade_details(
+            data.get("finalgrades")
+        )
         if student is not None:
             _filter_overview_for_student(data, student)
         return data
+
+    async def _fetch_finalgrade_details(self, finalgrades: Any) -> dict[str, Any]:
+        """Fetch every finalgrade detail response with limited concurrency."""
+        items = (
+            finalgrades.get("data")
+            if isinstance(finalgrades, dict)
+            else finalgrades
+        )
+        if not isinstance(items, list):
+            return {}
+
+        ids = {
+            str(item["id"])
+            for item in items
+            if isinstance(item, dict) and item.get("id") is not None
+        }
+        semaphore = asyncio.Semaphore(4)
+
+        async def fetch(finalgrade_id: str) -> tuple[str, Any]:
+            async with semaphore:
+                try:
+                    response = await self.request(f"finalgrades/{finalgrade_id}")
+                except BesteSchuleApiError as err:
+                    response = {"error": str(err)}
+                return finalgrade_id, response
+
+        return dict(await asyncio.gather(*(fetch(value) for value in sorted(ids))))
 
     async def _request_first_available(
         self,

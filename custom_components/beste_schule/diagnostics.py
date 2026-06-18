@@ -140,6 +140,14 @@ def _child_diagnostics(
             or key == "finalgrades"
         },
         "grade_debug": _grade_debug(data),
+        "finalgrade_detail_debug": {
+            str(finalgrade_id): _redact_detail(value)
+            for finalgrade_id, value in (
+                data.get("finalgrade_details", {}).items()
+                if isinstance(data.get("finalgrade_details"), dict)
+                else ()
+            )
+        },
         "homework_debug": _homework_debug(data),
         "substitution_debug": _substitution_debug(data),
         "timetable_debug": _timetable_debug(data),
@@ -494,4 +502,27 @@ def _sample(value: Any, depth: int = 0) -> Any:
     if isinstance(value, (int, float, bool)) or value is None:
         return value
 
+    return f"<{type(value).__name__}>"
+
+
+def _redact_detail(value: Any, depth: int = 0) -> Any:
+    """Redact a complete finalgrade detail response without sampling lists."""
+    if depth >= 10:
+        return f"<{type(value).__name__}>"
+
+    if isinstance(value, dict):
+        return {
+            str(key): (
+                "**REDACTED**"
+                if str(key) in REDACTED_KEYS
+                else _redact_detail(nested, depth + 1)
+            )
+            for key, nested in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_detail(item, depth + 1) for item in value]
+    if isinstance(value, str):
+        return value[:500]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
     return f"<{type(value).__name__}>"
