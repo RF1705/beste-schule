@@ -22,6 +22,7 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 - School time binary sensor
 - Current lesson and next lesson sensors
 - Grade average sensors per subject
+- Grade averages use beste.schule calculation rules and collection weights when available
 - Class sensor
 - Timetable JSON sensor for `fabel-smith/stundenplan-card`
 - Options to enable or disable calendars and the homework to-do list
