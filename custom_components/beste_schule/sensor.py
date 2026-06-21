@@ -478,13 +478,25 @@ def _event_cell_style(event: Any) -> dict[str, Any] | None:
     return None
 
 
+def _timetable_card_display_offset(week_offset: int, weekday: int) -> int:
+    """Switch the current-week view to the upcoming week on weekends."""
+    if week_offset == 0 and weekday >= 5:
+        return 1
+    return week_offset
+
+
 def _timetable_card_rows(
     coordinator: BesteSchuleDataUpdateCoordinator,
     week_offset: int,
 ) -> list[dict[str, Any]]:
     """Return week rows compatible with fabel-smith/stundenplan-card."""
     now = dt_util.now()
-    week_start = (now - timedelta(days=now.weekday()) + timedelta(weeks=week_offset)).replace(
+    display_offset = _timetable_card_display_offset(week_offset, now.weekday())
+    week_start = (
+        now
+        - timedelta(days=now.weekday())
+        + timedelta(weeks=display_offset)
+    ).replace(
         hour=0,
         minute=0,
         second=0,
@@ -547,7 +559,12 @@ def _timetable_card_days() -> list[str]:
 def _timetable_card_meta_days(week_offset: int) -> list[str]:
     """Return week dates for stundenplan-card headers."""
     now = dt_util.now()
-    week_start = now.date() - timedelta(days=now.weekday()) + timedelta(weeks=week_offset)
+    display_offset = _timetable_card_display_offset(week_offset, now.weekday())
+    week_start = (
+        now.date()
+        - timedelta(days=now.weekday())
+        + timedelta(weeks=display_offset)
+    )
     return [
         (week_start + timedelta(days=offset)).strftime("%Y%m%d")
         for offset in range(5)
