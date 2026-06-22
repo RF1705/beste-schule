@@ -25,6 +25,7 @@ from .calendar import (
     _iter_values,
     _lesson_events,
     _parse_date,
+    _period_time_map,
 )
 from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator, coordinators_for_entry
@@ -509,7 +510,8 @@ def _timetable_card_rows(
         week_end,
         include_cancelled=True,
     )
-    rows: dict[tuple[str, str], dict[str, Any]] = {}
+    rows: dict[int, dict[str, Any]] = {}
+    fallback_number = 100
 
     for event in events:
         weekday = event.start.weekday()
@@ -518,25 +520,48 @@ def _timetable_card_rows(
 
         start = event.start.strftime("%H:%M")
         end = event.end.strftime("%H:%M")
-        key = (start, end)
+        period_map = _period_time_map(coordinator.data, event.start.date())
+        number = next(
+            (
+                period_number
+                for period_number, period_times in period_map.items()
+                if period_times == (
+                    event.start.timetz().replace(tzinfo=None),
+                    event.end.timetz().replace(tzinfo=None),
+                )
+            ),
+            None,
+        )
+        if number is None:
+            number = fallback_number
+            fallback_number += 1
+        normal_times = _period_time_map(coordinator.data).get(number)
+        row_start = normal_times[0].strftime("%H:%M") if normal_times else start
+        row_end = normal_times[1].strftime("%H:%M") if normal_times else end
         row = rows.setdefault(
-            key,
+            number,
             {
-                "ID": len(rows) + 1,
-                "Stunde": f"{start}-{end}",
-                "start": start,
-                "end": end,
+                "ID": number,
+                "Stunde": f"{row_start}-{row_end}",
+                "start": row_start,
+                "end": row_end,
                 "Mo": "",
                 "Di": "",
                 "Mi": "",
                 "Do": "",
                 "Fr": "",
                 "cell_styles": [None, None, None, None, None],
+                "cell_times": [None, None, None, None, None],
             },
         )
         day_key = _weekday_key(weekday)
         cell = _event_cell_text(event)
         row[day_key] = f"{row[day_key]}\n\n{cell}".strip() if row[day_key] else cell
+        row["cell_times"][weekday] = {
+            "start": start,
+            "end": end,
+            "time": f"{start}-{end}",
+        }
         style = _event_cell_style(event)
         if style:
             row["cell_styles"][weekday] = style
@@ -545,7 +570,7 @@ def _timetable_card_rows(
         {
             key: value
             for key, value in rows[key].items()
-            if key != "cell_styles" or any(value)
+            if key not in {"cell_styles", "cell_times"} or any(value)
         }
         for key in sorted(rows)
     ]
