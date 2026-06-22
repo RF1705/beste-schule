@@ -466,8 +466,14 @@ def _period_time_map(
             and _day_uses_short_schedule(data, lesson_date)
             and bool(short_times)
         )
-        preferred_times = short_times if use_short_times else default_times
-        for timeset in [*preferred_times, *default_times, *times]:
+        if use_short_times:
+            selected_times = [*short_times, *default_times]
+        elif default_times:
+            selected_times = default_times
+        else:
+            selected_times = times
+
+        for timeset in selected_times:
             if not isinstance(timeset, dict):
                 continue
 
