@@ -417,16 +417,57 @@ def _parse_time(value: Any) -> time | None:
     return None
 
 
-def _period_time_map(data: dict[str, Any]) -> dict[int, tuple[time, time]]:
-    """Build a lesson-number to start/end time map from school timetable times."""
+def _day_uses_short_schedule(data: dict[str, Any], lesson_date: date) -> bool:
+    """Return whether a substitution-day note enables shortened lessons."""
+    source = data.get("substitution_days")
+    days = source.get("data") if isinstance(source, dict) else source
+    if not isinstance(days, list):
+        return False
+
+    markers = ("kurzstunden", "kurzplan", "hitzeplan", "short timetable")
+    for day_item in days:
+        if not isinstance(day_item, dict):
+            continue
+        if _parse_date(day_item.get("date")) != lesson_date:
+            continue
+        notes = _all_text(day_item.get("notes")).casefold()
+        return any(marker in notes for marker in markers)
+    return False
+
+
+def _period_time_map(
+    data: dict[str, Any],
+    lesson_date: date | None = None,
+) -> dict[int, tuple[time, time]]:
+    """Build the applicable lesson-number to start/end time map."""
     period_map: dict[int, tuple[time, time]] = {}
     for item in _iter_values(data.get("school")):
         times = item.get("times") if isinstance(item, dict) else None
         if not isinstance(times, list):
             continue
 
-        default_times = [timeset for timeset in times if isinstance(timeset, dict) and timeset.get("default")]
-        for timeset in [*default_times, *times]:
+        default_times = [
+            timeset
+            for timeset in times
+            if isinstance(timeset, dict) and timeset.get("default")
+        ]
+        short_times = [
+            timeset
+            for timeset in times
+            if isinstance(timeset, dict)
+            and not timeset.get("default")
+            and any(
+                marker in _all_text(timeset.get("name")).casefold()
+                for marker in ("kurz", "hitze", "short")
+            )
+        ]
+        use_short_times = (
+            lesson_date is not None
+            and _day_uses_short_schedule(data, lesson_date)
+            and bool(short_times)
+        )
+        preferred_times = short_times if use_short_times else default_times
+        for timeset in [*preferred_times, *default_times, *times]:
             if not isinstance(timeset, dict):
                 continue
 
@@ -666,6 +707,15 @@ def _lesson_events(
             if not _is_timetable_school_day(data, current_day):
                 continue
 
+            current_start_time = start_time
+            current_end_time = end_time
+            if _day_uses_short_schedule(data, current_day):
+                short_period_map = _period_time_map(data, current_day)
+                try:
+                    current_start_time, current_end_time = short_period_map[int(number)]
+                except (KeyError, TypeError, ValueError):
+                    pass
+
             try:
                 overlay_value = overlay.get((current_day, int(number)))
             except (TypeError, ValueError):
@@ -675,10 +725,16 @@ def _lesson_events(
                 if not include_cancelled:
                     continue
 
-            event_start = _local_datetime(current_day, start_time)
-            event_end = _local_datetime(current_day, end_time)
+            event_start = _local_datetime(current_day, current_start_time)
+            event_end = _local_datetime(current_day, current_end_time)
             if event_end > start_date and event_start < end_date:
-                key = _event_key(current_day, start_time, end_time, title, location)
+                key = _event_key(
+                    current_day,
+                    current_start_time,
+                    current_end_time,
+                    title,
+                    location,
+                )
                 if key not in seen:
                     seen.add(key)
                     substitution_title = overlay_value.get("title") if overlay_value else None
@@ -748,7 +804,6 @@ def _lesson_events(
         events,
         start_date,
         end_date,
-        period_map,
         include_cancelled,
     )
     events.sort(key=lambda event: _event_sort_value(event.start))
@@ -760,7 +815,6 @@ def _apply_dated_substitution_lessons(
     events: list[CalendarEvent],
     start_date: datetime,
     end_date: datetime,
-    period_map: dict[int, tuple[time, time]],
     include_cancelled: bool,
 ) -> None:
     """Replace weekly-plan slots with authoritative dated substitution lessons."""
@@ -778,12 +832,13 @@ def _apply_dated_substitution_lessons(
         if lesson_date is None or not isinstance(lessons, list):
             continue
 
+        day_period_map = _period_time_map(data, lesson_date)
         for lesson in lessons:
             if not isinstance(lesson, dict):
                 continue
             number = _find_direct_value(lesson, LESSON_NR_KEYS)
             try:
-                start_time, end_time = period_map[int(number)]
+                start_time, end_time = day_period_map[int(number)]
             except (KeyError, TypeError, ValueError):
                 continue
 
