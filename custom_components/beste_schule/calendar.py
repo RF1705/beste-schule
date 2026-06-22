@@ -446,30 +446,39 @@ def _period_time_map(
         if not isinstance(times, list):
             continue
 
-        default_times = [
-            timeset
-            for timeset in times
-            if isinstance(timeset, dict) and timeset.get("default")
-        ]
         short_times = [
             timeset
             for timeset in times
             if isinstance(timeset, dict)
-            and not timeset.get("default")
             and any(
                 marker in _all_text(timeset.get("name")).casefold()
                 for marker in ("kurz", "hitze", "short")
             )
         ]
+        normal_times = [
+            timeset
+            for timeset in times
+            if isinstance(timeset, dict)
+            and any(
+                marker in _all_text(timeset.get("name")).casefold()
+                for marker in ("normal", "regul", "standard")
+            )
+        ]
+        if not normal_times:
+            normal_times = [
+                timeset
+                for timeset in times
+                if isinstance(timeset, dict) and timeset not in short_times
+            ]
         use_short_times = (
             lesson_date is not None
             and _day_uses_short_schedule(data, lesson_date)
             and bool(short_times)
         )
         if use_short_times:
-            selected_times = [*short_times, *default_times]
-        elif default_times:
-            selected_times = default_times
+            selected_times = [*short_times, *normal_times]
+        elif normal_times:
+            selected_times = normal_times
         else:
             selected_times = times
 
@@ -1002,6 +1011,7 @@ def _cached_lesson_events(
     cache: dict[str, CalendarEvent] = getattr(coordinator, "timetable_event_cache", {})
     if not hasattr(coordinator, "timetable_event_cache"):
         coordinator.timetable_event_cache = cache
+    _prune_invalid_schedule_events(coordinator.data, cache)
 
     visible_start = max(start_date, cache_start)
     visible_end = min(end_date, horizon)
@@ -1037,6 +1047,46 @@ def _cached_lesson_events(
     ]
     events.sort(key=lambda event: _event_sort_value(event.start))
     return events
+
+
+def _prune_invalid_schedule_events(
+    data: dict[str, Any],
+    cache: dict[str, CalendarEvent],
+) -> None:
+    """Remove cached normal/short duplicates created for the wrong day type."""
+    normal_pairs = set(_period_time_map(data).values())
+    short_pairs: set[tuple[time, time]] = set()
+    for item in _iter_values(data.get("school")):
+        times = item.get("times") if isinstance(item, dict) else None
+        if not isinstance(times, list):
+            continue
+        for timeset in times:
+            if not isinstance(timeset, dict) or not any(
+                marker in _all_text(timeset.get("name")).casefold()
+                for marker in ("kurz", "hitze", "short")
+            ):
+                continue
+            for period in timeset.get("lessons", []):
+                if not isinstance(period, dict):
+                    continue
+                start_time = _parse_time(_find_value(period, START_KEYS))
+                end_time = _parse_time(_find_value(period, END_KEYS))
+                if start_time is not None and end_time is not None:
+                    short_pairs.add((start_time, end_time))
+
+    if not normal_pairs or not short_pairs:
+        return
+
+    for key, event in list(cache.items()):
+        pair = (
+            event.start.timetz().replace(tzinfo=None),
+            event.end.timetz().replace(tzinfo=None),
+        )
+        uses_short_schedule = _day_uses_short_schedule(data, event.start.date())
+        invalid_pairs = normal_pairs if uses_short_schedule else short_pairs
+        valid_pairs = short_pairs if uses_short_schedule else normal_pairs
+        if pair in invalid_pairs and pair not in valid_pairs:
+            cache.pop(key, None)
 
 
 def _cache_key(event: CalendarEvent) -> str:
@@ -1536,6 +1586,7 @@ class BesteSchuleTimetableCalendar(
                 event = _event_from_storage(value)
                 if event is not None:
                     cache[key] = event
+        _prune_invalid_schedule_events(self.coordinator.data, cache)
         self.coordinator.timetable_event_cache = cache
 
     @property
