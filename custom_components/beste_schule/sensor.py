@@ -41,6 +41,29 @@ CLASSWORK_MARKERS = (
     "klausur",
 )
 
+SUBJECT_ICON_RULES = (
+    (("technik/computer", "informatik", "computer", "tc"), "mdi:desktop-classic"),
+    (("mathematik", "mathe", "ma"), "mdi:calculator"),
+    (("deutsch", "german", "de"), "mdi:book-open-page-variant"),
+    (("englisch", "english", "en"), "mdi:translate"),
+    (("französisch", "franzoesisch", "french", "fr"), "mdi:translate"),
+    (("spanisch", "spanish"), "mdi:translate"),
+    (("latein", "latin"), "mdi:script-text"),
+    (("biologie", "bio"), "mdi:dna"),
+    (("chemie",), "mdi:flask"),
+    (("physik",), "mdi:atom"),
+    (("geographie", "geografie", "geo", "erdkunde"), "mdi:earth"),
+    (("geschichte",), "mdi:history"),
+    (("ethik", "philosophie"), "mdi:scale-balance"),
+    (("religion", "evangelisch", "katholisch"), "mdi:church"),
+    (("sport",), "mdi:run"),
+    (("kunst",), "mdi:palette"),
+    (("musik",), "mdi:music"),
+    (("wirtschaft", "recht"), "mdi:briefcase-outline"),
+    (("gemeinschaftskunde", "sozialkunde", "politik"), "mdi:account-group"),
+    (("astronomie",), "mdi:telescope"),
+)
+
 FORMULA_OPERATORS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -441,6 +464,29 @@ def _slug(value: str) -> str:
     """Return a simple slug for unique ids."""
     slug = re.sub(r"[^a-z0-9]+", "_", value.lower())
     return slug.strip("_") or "unknown"
+
+
+def _subject_icon(subject: str) -> str:
+    """Return a matching Material Design icon for a subject."""
+    normalized = _normalize_subject(subject)
+    words = set(re.findall(r"[a-z0-9]+", normalized))
+    for markers, icon in SUBJECT_ICON_RULES:
+        for marker in markers:
+            normalized_marker = _normalize_subject(marker)
+            if normalized_marker in normalized or normalized_marker in words:
+                return icon
+    return "mdi:school"
+
+
+def _normalize_subject(value: str) -> str:
+    """Return a simple comparable subject name."""
+    return (
+        value.casefold()
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
 
 
 def _sick_absence_days(data: dict[str, Any]) -> set[str]:
@@ -932,6 +978,7 @@ class BesteSchuleGradeAverageSensor(
         self._entry = entry
         self._subject = subject
         self._attr_name = f"Note {subject}"
+        self._attr_icon = _subject_icon(subject)
         self._attr_unique_id = (
             f"{coordinator.unique_id_prefix(entry.entry_id)}_grade_average_{_slug(subject)}"
         )
