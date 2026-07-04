@@ -144,6 +144,7 @@ def _child_diagnostics(
             or key == "substitution_days"
             or key == "grades"
             or key == "finalgrades"
+            or key == "grade_years"
         },
         "grade_debug": _grade_debug(data),
         "finalgrade_detail_debug": {

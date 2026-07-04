@@ -369,7 +369,72 @@ def _grade_subjects(data: dict[str, Any]) -> list[str]:
         subject = _subject_name(item)
         if subject and _api_average(data, subject) is not None:
             subjects.add(subject)
+    for year_data in _grade_year_data(data):
+        subjects.update(_grade_subjects_from_single_data(year_data))
     return sorted(subjects)
+
+
+def _grade_subjects_from_single_data(data: dict[str, Any]) -> set[str]:
+    """Return grade subjects from one data block without recursing into history."""
+    subjects: set[str] = set()
+    for item in _data_list(data.get("grades")):
+        if not isinstance(item, dict) or _parse_grade(item.get("value")) is None:
+            continue
+        subject = _subject_name(item)
+        if subject:
+            subjects.add(subject)
+    for item in _data_list(data.get("finalgrades")):
+        if not isinstance(item, dict):
+            continue
+        subject = _subject_name(item)
+        if subject and _api_average(data, subject) is not None:
+            subjects.add(subject)
+    return subjects
+
+
+def _grade_year_data(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return grade data blocks grouped by school year."""
+    grade_years = data.get("grade_years")
+    if not isinstance(grade_years, dict):
+        return []
+
+    values: list[dict[str, Any]] = []
+    for item in grade_years.values():
+        if not isinstance(item, dict):
+            continue
+        year_data = {
+            "grades": item.get("grades"),
+            "finalgrades": item.get("finalgrades"),
+            "finalgrade_details": item.get("finalgrade_details"),
+            "year": item.get("year"),
+        }
+        values.append(year_data)
+    return values
+
+
+def _subject_grade_value(data: dict[str, Any], subject: str) -> float | None:
+    """Return the rounded grade value for one subject in one data block."""
+    api_average = _api_average(data, subject)
+    if api_average is not None:
+        return round(api_average, 2)
+
+    formula_average, _, _ = _formula_average(data, subject)
+    if formula_average is not None:
+        return round(formula_average, 2)
+    return None
+
+
+def _grade_year_history(data: dict[str, Any], subject: str) -> dict[str, float]:
+    """Return subject grade values keyed by school year display name."""
+    history: dict[str, float] = {}
+    for year_data in _grade_year_data(data):
+        year_name = _school_year_display_name(year_data.get("year"))
+        if not year_name:
+            continue
+        value = _subject_grade_value(year_data, subject)
+        if value is not None:
+            history[year_name] = value
+    return history
 
 
 def _slug(value: str) -> str:
@@ -879,17 +944,7 @@ class BesteSchuleGradeAverageSensor(
     @property
     def native_value(self) -> float | None:
         """Return the rounded subject grade."""
-        api_average = _api_average(self.coordinator.data, self._subject)
-        if api_average is not None:
-            return round(api_average, 2)
-
-        formula_average, _, _ = _formula_average(
-            self.coordinator.data,
-            self._subject,
-        )
-        if formula_average is not None:
-            return round(formula_average, 2)
-        return None
+        return _subject_grade_value(self.coordinator.data, self._subject)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -902,7 +957,7 @@ class BesteSchuleGradeAverageSensor(
         )
         classwork_values, other_values = self._grouped_values
 
-        return {
+        attributes = {
             "subject": self._subject,
             "source": (
                 "api_value"
@@ -930,6 +985,11 @@ class BesteSchuleGradeAverageSensor(
             "classwork_grades": classwork_values,
             "other_grades": other_values,
         }
+        history = _grade_year_history(self.coordinator.data, self._subject)
+        if history:
+            attributes["history"] = history
+            attributes.update(history)
+        return attributes
 
     @property
     def _grouped_values(self) -> tuple[list[float], list[float]]:

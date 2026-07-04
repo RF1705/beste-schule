@@ -192,12 +192,17 @@ class BesteSchuleApi:
             "grades": (
                 (
                     "grades",
-                    {**student_filter, **year_filter, "include": "collection"},
+                    {
+                        **student_filter,
+                        **year_filter,
+                        "include": "collection",
+                        "per_page": 250,
+                    },
                 ),
                 ("grades", student_filter or None),
             ),
             "finalgrades": (
-                ("finalgrades", {**student_filter, **year_filter}),
+                ("finalgrades", {**student_filter, **year_filter, "per_page": 250}),
                 ("finalgrades", student_filter or None),
             ),
         }
@@ -220,9 +225,48 @@ class BesteSchuleApi:
         data["finalgrade_details"] = await self._fetch_finalgrade_details(
             data.get("finalgrades")
         )
+        data["grade_years"] = await self._fetch_grade_years(
+            data.get("years"),
+            student_filter,
+        )
         if student is not None:
             _filter_overview_for_student(data, student)
         return data
+
+    async def _fetch_grade_years(
+        self,
+        years: Any,
+        student_filter: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Fetch grade data grouped by school year."""
+        year_items = _response_data(years)
+        if not isinstance(year_items, list):
+            return {}
+
+        results: dict[str, Any] = {}
+        for year in year_items:
+            if not isinstance(year, dict) or year.get("id") is None:
+                continue
+            year_id = year["id"]
+            params = {**student_filter, "filter[year]": year_id, "per_page": 250}
+            grades = await self._request_first_available(
+                (
+                    "grades",
+                    {**params, "include": "collection"},
+                )
+            )
+            finalgrades = await self._request_first_available(
+                ("finalgrades", params)
+            )
+            results[str(year_id)] = {
+                "year": year,
+                "grades": grades,
+                "finalgrades": finalgrades,
+                "finalgrade_details": await self._fetch_finalgrade_details(
+                    finalgrades
+                ),
+            }
+        return results
 
     async def _fetch_finalgrade_details(self, finalgrades: Any) -> dict[str, Any]:
         """Fetch every finalgrade detail response with limited concurrency."""
@@ -359,6 +403,13 @@ def _filter_overview_for_student(data: dict[str, Any], student: dict[str, Any]) 
     _filter_journal_weeks(data.get("journal_weeks"), student_context)
     for key in ("journal_lesson_student", "journal_day_student", "grades", "finalgrades"):
         _filter_data_list(data.get(key), student_context)
+    grade_years = data.get("grade_years")
+    if isinstance(grade_years, dict):
+        for year_data in grade_years.values():
+            if not isinstance(year_data, dict):
+                continue
+            for key in ("grades", "finalgrades"):
+                _filter_data_list(year_data.get(key), student_context)
 
 
 def _student_context_with_groups(
