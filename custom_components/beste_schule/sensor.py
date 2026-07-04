@@ -987,7 +987,6 @@ class BesteSchuleGradeAverageSensor(
         }
         history = _grade_year_history(self.coordinator.data, self._subject)
         if history:
-            attributes["history"] = history
             attributes.update(history)
         return attributes
 
