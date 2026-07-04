@@ -21,6 +21,8 @@ from .sensor import (
     _grade_subjects,
     _is_classwork,
     _formula_average,
+    _current_school_year,
+    _school_year_display_name,
     _subject_calculation_rule,
     _parse_grade,
     _subject_grade_values,
@@ -124,6 +126,10 @@ def _child_diagnostics(
         "student_name": student_name_from_data(data),
         "device_registry": device_info,
         "detected_school_name": school_name_from_data(data),
+        "detected_school_year": {
+            "display": _school_year_display_name(_current_school_year(data)),
+            "raw": _sample(_current_school_year(data)),
+        },
         "response_summary": {
             key: _summarize_response(value) for key, value in data.items()
         },
@@ -131,6 +137,7 @@ def _child_diagnostics(
             key: _sample(value)
             for key, value in data.items()
             if key in {"school", "students", "selected_student"}
+            or key == "years"
             or key == "groups"
             or key.startswith("time_")
             or key.startswith("journal_")

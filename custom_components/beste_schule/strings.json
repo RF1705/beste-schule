@@ -72,6 +72,9 @@
       "school_class": {
         "name": "Class"
       },
+      "school_year": {
+        "name": "School year"
+      },
       "timetable_card": {
         "name": "Timetable card"
       },

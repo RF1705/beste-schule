@@ -72,6 +72,9 @@
       "school_class": {
         "name": "Klasse"
       },
+      "school_year": {
+        "name": "Schuljahr"
+      },
       "timetable_card": {
         "name": "Stundenplan Card"
       },

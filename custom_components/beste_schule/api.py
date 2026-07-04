@@ -114,9 +114,10 @@ class BesteSchuleApi:
 
         data["students"] = (
             students
-            if students is not None
+            if _student_count(students) > 0
             else await self._request_first_available(("students", None))
         )
+        data["years"] = await self._request_first_available(("years", None))
         data["multi_student"] = _student_count(data["students"]) > 1
         if student is not None:
             data["selected_student"] = student
@@ -131,6 +132,8 @@ class BesteSchuleApi:
             else _first_student_id(data.get("students"))
         )
         student_filter = {"filter[student]": student_id} if student_id is not None else {}
+        year_id = _current_year_id(data.get("years"))
+        year_filter = {"filter[year]": year_id} if year_id is not None else {}
 
         routes = {
             "groups": (
@@ -187,10 +190,16 @@ class BesteSchuleApi:
                 },
             ),
             "grades": (
-                ("grades", {**student_filter, "include": "collection"}),
+                (
+                    "grades",
+                    {**student_filter, **year_filter, "include": "collection"},
+                ),
                 ("grades", student_filter or None),
             ),
-            "finalgrades": ("finalgrades", student_filter or None),
+            "finalgrades": (
+                ("finalgrades", {**student_filter, **year_filter}),
+                ("finalgrades", student_filter or None),
+            ),
         }
         if student_id is not None:
             routes["journal_lessons"] = (
@@ -295,6 +304,51 @@ def _student_count(students: Any) -> int:
     if isinstance(students, list):
         return len([item for item in students if isinstance(item, dict)])
     return 0
+
+
+def _current_year_id(years: Any) -> int | str | None:
+    """Return the current or most recently finished school year id."""
+    year = _current_year(years)
+    if isinstance(year, dict):
+        return year.get("id")
+    return None
+
+
+def _current_year(years: Any) -> dict[str, Any] | None:
+    """Return the current or most recently finished school year."""
+    items = _response_data(years)
+    if not isinstance(items, list):
+        return None
+
+    today = dt_util.now().date()
+    parsed: list[tuple[Any, Any, dict[str, Any]]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        start = _parse_date(item.get("from"))
+        end = _parse_date(item.get("to"))
+        if start is None or end is None:
+            continue
+        if start <= today <= end:
+            return item
+        parsed.append((start, end, item))
+
+    past = [value for value in parsed if value[0] <= today]
+    if past:
+        return max(past, key=lambda value: value[1])[2]
+    if parsed:
+        return min(parsed, key=lambda value: value[0])[2]
+    return None
+
+
+def _parse_date(value: Any):
+    """Parse a yyyy-mm-dd date value."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return dt_util.parse_date(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _filter_overview_for_student(data: dict[str, Any], student: dict[str, Any]) -> None:

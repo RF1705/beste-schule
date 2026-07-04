@@ -61,6 +61,7 @@ async def async_setup_entry(
             [
                 BesteSchuleSickDaysSensor(entry, coordinator),
                 BesteSchuleClassSensor(entry, coordinator),
+                BesteSchuleSchoolYearSensor(entry, coordinator),
                 BesteSchuleTimetableCardSensor(entry, coordinator),
                 BesteSchuleLessonSensor(entry, coordinator, "current_lesson"),
                 BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
@@ -444,6 +445,60 @@ def _student_class(data: dict[str, Any]) -> str | None:
     return None
 
 
+def _current_school_year(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the current or most recently finished school year."""
+    years = data.get("years")
+    items = years.get("data") if isinstance(years, dict) else years
+    if not isinstance(items, list):
+        return None
+
+    today = dt_util.now().date()
+    parsed: list[tuple[Any, Any, dict[str, Any]]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        start = _school_year_date(item.get("from"))
+        end = _school_year_date(item.get("to"))
+        if start is None or end is None:
+            continue
+        if start <= today <= end:
+            return item
+        parsed.append((start, end, item))
+
+    past = [value for value in parsed if value[0] <= today]
+    if past:
+        return max(past, key=lambda value: value[1])[2]
+    if parsed:
+        return min(parsed, key=lambda value: value[0])[2]
+    return None
+
+
+def _school_year_display_name(year: dict[str, Any] | None) -> str | None:
+    """Return a compact school year display name."""
+    if not isinstance(year, dict):
+        return None
+
+    name = _text_value(year.get("name"))
+    if name:
+        return re.sub(r"^schuljahr\s+", "", name, flags=re.IGNORECASE).strip()
+
+    start = _school_year_date(year.get("from"))
+    end = _school_year_date(year.get("to"))
+    if start is not None and end is not None:
+        return f"{start.year}/{str(end.year)[-2:]}"
+    return None
+
+
+def _school_year_date(value: Any):
+    """Parse a school year date value."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return dt_util.parse_date(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _weekday_key(index: int) -> str:
     """Return stundenplan-card weekday keys."""
     return ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")[index]
@@ -623,6 +678,49 @@ class BesteSchuleClassSensor(
     def native_value(self) -> str | None:
         """Return the student's main class."""
         return _student_class(self.coordinator.data)
+
+
+class BesteSchuleSchoolYearSensor(
+    CoordinatorEntity[BesteSchuleDataUpdateCoordinator], SensorEntity
+):
+    """Expose the current school year."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:calendar-range"
+    _attr_translation_key = "school_year"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: BesteSchuleDataUpdateCoordinator,
+    ) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_school_year"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return besteschule_device_info(self._entry, self.coordinator.data)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the current school year."""
+        return _school_year_display_name(_current_school_year(self.coordinator.data))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the school year details used by the integration."""
+        year = _current_school_year(self.coordinator.data)
+        if not isinstance(year, dict):
+            return {}
+        return {
+            "id": year.get("id"),
+            "ids": year.get("ids"),
+            "name": year.get("name"),
+            "from": year.get("from"),
+            "to": year.get("to"),
+        }
 
 
 class BesteSchuleTimetableCardSensor(
