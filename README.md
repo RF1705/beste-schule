@@ -3,6 +3,7 @@
 [![HACS](https://github.com/RF1705/beste-schule/actions/workflows/hacs.yml/badge.svg)](https://github.com/RF1705/beste-schule/actions/workflows/hacs.yml)
 [![Hassfest](https://github.com/RF1705/beste-schule/actions/workflows/hassfest.yml/badge.svg)](https://github.com/RF1705/beste-schule/actions/workflows/hassfest.yml)
 [![GitHub release](https://img.shields.io/github/v/release/RF1705/beste-schule)](https://github.com/RF1705/beste-schule/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/RF1705/beste-schule/total)](https://github.com/RF1705/beste-schule/releases)
 [![License](https://img.shields.io/github/license/RF1705/beste-schule)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rf1705-yellow?logo=buymeacoffee)](https://buymeacoffee.com/rf1705)
 
