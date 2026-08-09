@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (leave empty for latest)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  upload-zip:
+    name: Attach integration ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_tag="$EVENT_TAG"
+          if [ -z "$release_tag" ]; then
+            release_tag="$INPUT_TAG"
+          fi
+          if [ -z "$release_tag" ]; then
+            release_tag="$(gh release view --json tagName --jq .tagName)"
+          fi
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
+      - name: Create integration ZIP
+        working-directory: custom_components/beste_schule
+        run: zip -r "${{ github.workspace }}/beste_schule.zip" .
+
+      - name: Attach ZIP to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release upload
+          "${{ steps.release.outputs.tag }}"
+          beste_schule.zip
+          --clobber
