@@ -168,13 +168,9 @@ def student_name_from_data(data: dict[str, Any]) -> str | None:
 def besteschule_device_info(entry: ConfigEntry, data: dict[str, Any]) -> DeviceInfo:
     """Return Home Assistant device info for beste.schule entities."""
     school_name = school_name_from_data(data) or entry.data.get(CONF_SCHOOL_NAME)
-    student_id = student_id_from_data(data)
+    student_id = str(data.get("identifier_student_id") or student_id_from_data(data))
     student_name = student_name_from_data(data) or entry.title
-    identifier = (
-        f"{entry.entry_id}:{student_id}"
-        if data.get("multi_student")
-        else entry.entry_id
-    )
+    identifier = f"{entry.entry_id}:{student_id}"
     return DeviceInfo(
         identifiers={(DOMAIN, identifier)},
         manufacturer="beste.schule",

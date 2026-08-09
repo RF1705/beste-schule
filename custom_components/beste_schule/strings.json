@@ -30,6 +30,13 @@
           "enable_notice_calendar": "Create a Home Assistant calendar for day-wide school notices.",
           "enable_homework_todo": "Create a Home Assistant to-do list for homework."
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect beste.schule",
+        "description": "The stored Personal Access Token is no longer accepted. Create a new token in beste.schule and paste it here.",
+        "data": {
+          "token": "Personal Access Token"
+        }
       }
     },
     "error": {

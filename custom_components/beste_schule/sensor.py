@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import ast
+from datetime import timedelta
 import operator
 import re
-from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -21,15 +21,15 @@ from .calendar import (
     TIMETABLE_CACHE_DAYS,
     _absence_text,
     _cached_lesson_events,
+    _coordinator_lesson_events,
     _find_value,
     _iter_values,
-    _lesson_events,
     _parse_date,
     _period_time_map,
 )
-from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator, coordinators_for_entry
 from .entity import besteschule_device_info, student_data_from_data
+from .presence import lesson_boundary_manager
 
 CLASSWORK_MARKERS = (
     "ka",
@@ -80,6 +80,7 @@ async def async_setup_entry(
     """Set up beste.schule sensors."""
     entities: list[SensorEntity] = []
     for coordinator in coordinators_for_entry(hass, entry.entry_id):
+        known_subjects = set(_grade_subjects(coordinator.data))
         entities.extend(
             [
                 BesteSchuleSickDaysSensor(entry, coordinator),
@@ -90,10 +91,29 @@ async def async_setup_entry(
                 BesteSchuleLessonSensor(entry, coordinator, "next_lesson"),
                 *[
                     BesteSchuleGradeAverageSensor(entry, coordinator, subject)
-                    for subject in _grade_subjects(coordinator.data)
+                    for subject in sorted(known_subjects)
                 ],
             ]
         )
+
+        @callback
+        def add_new_grade_sensors(
+            coordinator: BesteSchuleDataUpdateCoordinator = coordinator,
+            known_subjects: set[str] = known_subjects,
+        ) -> None:
+            """Create sensors for subjects that appear after initial setup."""
+            new_subjects = set(_grade_subjects(coordinator.data)) - known_subjects
+            if not new_subjects:
+                return
+            known_subjects.update(new_subjects)
+            async_add_entities(
+                [
+                    BesteSchuleGradeAverageSensor(entry, coordinator, subject)
+                    for subject in sorted(new_subjects)
+                ]
+            )
+
+        entry.async_on_unload(coordinator.async_add_listener(add_new_grade_sensors))
     async_add_entities(entities)
 
 
@@ -457,6 +477,11 @@ def _grade_year_history(data: dict[str, Any], subject: str) -> dict[str, float]:
         value = _subject_grade_value(year_data, subject)
         if value is not None:
             history[year_name] = value
+
+    current_year_name = _school_year_display_name(_current_school_year(data))
+    current_value = _subject_grade_value(data, subject)
+    if current_year_name and current_value is not None:
+        history[current_year_name] = current_value
     return history
 
 
@@ -620,9 +645,7 @@ def _event_cell_text(event: Any) -> str:
     parts = [event.summary]
     if event.description:
         parts.extend(
-            line.strip()
-            for line in event.description.splitlines()
-            if line.strip()
+            line.strip() for line in event.description.splitlines() if line.strip()
         )
     return "\n".join(part for part in parts if part)
 
@@ -658,11 +681,13 @@ def _timetable_card_rows(
 ) -> list[dict[str, Any]]:
     """Return week rows compatible with fabel-smith/stundenplan-card."""
     now = dt_util.now()
+    cache_key = (coordinator.data_revision, now.date(), week_offset)
+    cached = coordinator.timetable_card_cache.get(cache_key)
+    if cached is not None:
+        return cached
     display_offset = _timetable_card_display_offset(week_offset, now.weekday())
     week_start = (
-        now
-        - timedelta(days=now.weekday())
-        + timedelta(weeks=display_offset)
+        now - timedelta(days=now.weekday()) + timedelta(weeks=display_offset)
     ).replace(
         hour=0,
         minute=0,
@@ -670,14 +695,18 @@ def _timetable_card_rows(
         microsecond=0,
     )
     week_end = week_start + timedelta(days=7)
-    events = _lesson_events(
-        coordinator.data,
-        week_start,
-        week_end,
-        include_cancelled=True,
-    )
+    events = [
+        event
+        for event in _coordinator_lesson_events(
+            coordinator,
+            include_cancelled=True,
+        )
+        if event.end > week_start and event.start < week_end
+    ]
     rows: dict[int, dict[str, Any]] = {}
     fallback_number = 100
+    normal_period_map = _period_time_map(coordinator.data)
+    daily_period_maps: dict[Any, dict[int, tuple[Any, Any]]] = {}
 
     for event in events:
         weekday = event.start.weekday()
@@ -686,12 +715,17 @@ def _timetable_card_rows(
 
         start = event.start.strftime("%H:%M")
         end = event.end.strftime("%H:%M")
-        period_map = _period_time_map(coordinator.data, event.start.date())
+        lesson_date = event.start.date()
+        period_map = daily_period_maps.get(lesson_date)
+        if period_map is None:
+            period_map = _period_time_map(coordinator.data, lesson_date)
+            daily_period_maps[lesson_date] = period_map
         number = next(
             (
                 period_number
                 for period_number, period_times in period_map.items()
-                if period_times == (
+                if period_times
+                == (
                     event.start.timetz().replace(tzinfo=None),
                     event.end.timetz().replace(tzinfo=None),
                 )
@@ -701,7 +735,7 @@ def _timetable_card_rows(
         if number is None:
             number = fallback_number
             fallback_number += 1
-        normal_times = _period_time_map(coordinator.data).get(number)
+        normal_times = normal_period_map.get(number)
         row_start = normal_times[0].strftime("%H:%M") if normal_times else start
         row_end = normal_times[1].strftime("%H:%M") if normal_times else end
         row = rows.setdefault(
@@ -732,7 +766,7 @@ def _timetable_card_rows(
         if style:
             row["cell_styles"][weekday] = style
 
-    return [
+    result = [
         {
             key: value
             for key, value in rows[key].items()
@@ -740,6 +774,8 @@ def _timetable_card_rows(
         }
         for key in sorted(rows)
     ]
+    coordinator.timetable_card_cache[cache_key] = result
+    return result
 
 
 def _timetable_card_days() -> list[str]:
@@ -752,13 +788,10 @@ def _timetable_card_meta_days(week_offset: int) -> list[str]:
     now = dt_util.now()
     display_offset = _timetable_card_display_offset(week_offset, now.weekday())
     week_start = (
-        now.date()
-        - timedelta(days=now.weekday())
-        + timedelta(weeks=display_offset)
+        now.date() - timedelta(days=now.weekday()) + timedelta(weeks=display_offset)
     )
     return [
-        (week_start + timedelta(days=offset)).strftime("%Y%m%d")
-        for offset in range(5)
+        (week_start + timedelta(days=offset)).strftime("%Y%m%d") for offset in range(5)
     ]
 
 
@@ -778,7 +811,9 @@ class BesteSchuleClassSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_school_class"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_school_class"
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -807,7 +842,9 @@ class BesteSchuleSchoolYearSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_school_year"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_school_year"
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -849,7 +886,9 @@ class BesteSchuleTimetableCardSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_timetable_card"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_timetable_card"
+        )
         self._attr_translation_key = "timetable_card"
 
     @property
@@ -886,7 +925,9 @@ class BesteSchuleSickDaysSensor(
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_sick_days"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_sick_days"
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -923,6 +964,20 @@ class BesteSchuleLessonSensor(
         self._attr_translation_key = kind
         self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_{kind}"
 
+    async def async_added_to_hass(self) -> None:
+        """Register for exact lesson-boundary updates."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            lesson_boundary_manager(self.coordinator).async_register(
+                self._handle_boundary_update
+            )
+        )
+
+    @callback
+    def _handle_boundary_update(self) -> None:
+        """Write state exactly when a lesson starts or ends."""
+        self.async_write_ha_state()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
@@ -955,7 +1010,9 @@ class BesteSchuleLessonSensor(
             now + timedelta(days=TIMETABLE_CACHE_DAYS),
         )
         if self._kind == "current_lesson":
-            return next((event for event in events if event.start <= now < event.end), None)
+            return next(
+                (event for event in events if event.start <= now < event.end), None
+            )
         return next((event for event in events if event.start > now), None)
 
 
@@ -979,9 +1036,7 @@ class BesteSchuleGradeAverageSensor(
         self._subject = subject
         self._attr_name = f"Note {subject}"
         self._attr_icon = _subject_icon(subject)
-        self._attr_unique_id = (
-            f"{coordinator.unique_id_prefix(entry.entry_id)}_grade_average_{_slug(subject)}"
-        )
+        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_grade_average_{_slug(subject)}"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1018,13 +1073,10 @@ class BesteSchuleGradeAverageSensor(
             "calculation_rule": calculation_rule,
             "calculation_rule_source": "api" if api_rule is not None else "fallback",
             "formula_result": (
-                round(formula_average, 2)
-                if formula_average is not None
-                else None
+                round(formula_average, 2) if formula_average is not None else None
             ),
             "formula_variables": {
-                key: round(value, 4)
-                for key, value in formula_variables.items()
+                key: round(value, 4) for key, value in formula_variables.items()
             },
             "count": len(classwork_values) + len(other_values),
             "classwork_count": len(classwork_values),

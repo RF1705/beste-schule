@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 from datetime import timedelta
 import re
+import time
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError
@@ -12,6 +14,11 @@ from aiohttp import ClientError, ClientResponseError
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
+
+SHARED_DATA_CACHE_SECONDS = 5 * 60
+SCHOOL_METADATA_CACHE_SECONDS = 60 * 60
+FINALGRADE_DETAIL_CACHE_SECONDS = 60 * 60
+GRADE_HISTORY_CACHE_SECONDS = 6 * 60 * 60
 
 
 class BesteSchuleApiError(Exception):
@@ -29,6 +36,10 @@ class BesteSchuleApi:
         self._session = async_get_clientsession(hass)
         self._api_url = api_url.rstrip("/")
         self._token = token
+        self._response_cache: dict[str, tuple[float, Any]] = {}
+        self._finalgrade_detail_cache: dict[str, tuple[float, Any]] = {}
+        self._grade_history_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._request_semaphore = asyncio.Semaphore(4)
 
     async def request(
         self,
@@ -43,9 +54,10 @@ class BesteSchuleApi:
         }
 
         try:
-            response = await self._session.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            return await response.json()
+            async with self._request_semaphore:
+                response = await self._session.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                return await response.json()
         except ClientResponseError as err:
             if err.status in (401, 403):
                 raise BesteSchuleAuthError(
@@ -55,7 +67,9 @@ class BesteSchuleApi:
                 f"beste.schule returned HTTP {err.status} for {route}"
             ) from err
         except ClientError as err:
-            raise BesteSchuleApiError(f"Could not request beste.schule route {route}") from err
+            raise BesteSchuleApiError(
+                f"Could not request beste.schule route {route}"
+            ) from err
 
     async def validate_token(self) -> Any:
         """Validate that the token can access at least one known read-only route."""
@@ -77,8 +91,12 @@ class BesteSchuleApi:
                 last_error = err
 
         if saw_auth_error:
-            raise BesteSchuleAuthError("beste.schule rejected the token") from last_error
-        raise BesteSchuleApiError("Could not validate the beste.schule token") from last_error
+            raise BesteSchuleAuthError(
+                "beste.schule rejected the token"
+            ) from last_error
+        raise BesteSchuleApiError(
+            "Could not validate the beste.schule token"
+        ) from last_error
 
     async def fetch_suggested_name_data(self) -> Any:
         """Fetch optional profile data for a useful Home Assistant device name."""
@@ -106,32 +124,67 @@ class BesteSchuleApi:
     ) -> dict[str, Any]:
         """Fetch the first read-only routes we want to explore."""
         data: dict[str, Any] = {}
-
-        try:
-            data["school"] = await self.request("school")
-        except BesteSchuleApiError as err:
-            data["school"] = {"error": str(err)}
-
-        data["students"] = (
-            students
-            if _student_count(students) > 0
-            else await self._request_first_available(("students", None))
-        )
-        data["years"] = await self._request_first_available(("years", None))
-        data["multi_student"] = _student_count(data["students"]) > 1
-        if student is not None:
-            data["selected_student"] = student
-
         substitution_range_start = dt_util.now().date() - timedelta(days=7)
         substitution_range_end = dt_util.now().date() + timedelta(days=60)
         homework_range_start = dt_util.now().date()
         homework_range_end = dt_util.now().date() + timedelta(days=21)
+
+        async def resolve_students() -> Any:
+            if _student_count(students) > 0:
+                return students
+            return await self._request_first_available(("students", None))
+
+        (
+            data["school"],
+            data["students"],
+            data["years"],
+            data["time_tables_current"],
+            data["substitution_days"],
+        ) = await asyncio.gather(
+            self._request_first_available_cached(
+                ("school", None),
+                cache_key="school",
+                max_age=SCHOOL_METADATA_CACHE_SECONDS,
+            ),
+            resolve_students(),
+            self._request_first_available_cached(
+                ("years", None),
+                cache_key="years",
+                max_age=SCHOOL_METADATA_CACHE_SECONDS,
+            ),
+            self._request_first_available_cached(
+                ("time-tables/current", None),
+                cache_key="time_tables_current",
+                max_age=SHARED_DATA_CACHE_SECONDS,
+            ),
+            self._request_first_available_cached(
+                (
+                    "substitution-plans/days",
+                    {
+                        "include": "lessons,subject,teachers,rooms,notes",
+                        "filter[range]": (
+                            f"{substitution_range_start.isoformat()},"
+                            f"{substitution_range_end.isoformat()}"
+                        ),
+                        "per_page": 250,
+                    },
+                ),
+                cache_key="substitution_days",
+                max_age=SHARED_DATA_CACHE_SECONDS,
+            ),
+        )
+        data["multi_student"] = _student_count(data["students"]) > 1
+        if student is not None:
+            data["selected_student"] = student
+
         student_id = (
             student.get("id")
             if isinstance(student, dict)
             else _first_student_id(data.get("students"))
         )
-        student_filter = {"filter[student]": student_id} if student_id is not None else {}
+        student_filter = (
+            {"filter[student]": student_id} if student_id is not None else {}
+        )
         year_id = _current_year_id(data.get("years"))
         year_filter = {"filter[year]": year_id} if year_id is not None else {}
 
@@ -144,7 +197,6 @@ class BesteSchuleApi:
                     "per_page": 100,
                 },
             ),
-            "time_tables_current": ("time-tables/current", None),
             "journal_weeks": (
                 (
                     "journal/weeks",
@@ -153,7 +205,7 @@ class BesteSchuleApi:
                         "include": (
                             "days,days.notes,days.notes.type,lessons,lessons.notes,"
                             "lessons.notes.type,subject,room,teacher,group,time,notes,notes.type"
-                        )
+                        ),
                     },
                 ),
                 (
@@ -177,17 +229,6 @@ class BesteSchuleApi:
             "journal_day_student": (
                 "journal/day-student",
                 student_filter or None,
-            ),
-            "substitution_days": (
-                "substitution-plans/days",
-                {
-                    "include": "lessons,subject,teachers,rooms,notes",
-                    "filter[range]": (
-                        f"{substitution_range_start.isoformat()},"
-                        f"{substitution_range_end.isoformat()}"
-                    ),
-                    "per_page": 250,
-                },
             ),
             "grades": (
                 (
@@ -220,8 +261,12 @@ class BesteSchuleApi:
                 },
             )
 
-        for key, route_info in routes.items():
-            data[key] = await self._request_first_available(route_info)
+        data.update(await self._request_routes(routes))
+        if not any(
+            not _is_error_response(data.get(key))
+            for key in ("time_tables_current", *routes)
+        ):
+            raise BesteSchuleApiError("All beste.schule API requests failed")
         data["finalgrade_details"] = await self._fetch_finalgrade_details(
             data.get("finalgrades")
         )
@@ -239,41 +284,61 @@ class BesteSchuleApi:
         student_filter: dict[str, Any],
     ) -> dict[str, Any]:
         """Fetch grade data grouped by school year."""
+        student_key = str(student_filter.get("filter[student]", "student"))
+        cached = self._grade_history_cache.get(student_key)
+        if (
+            cached is not None
+            and time.monotonic() - cached[0] < GRADE_HISTORY_CACHE_SECONDS
+        ):
+            return copy.deepcopy(cached[1])
+
         year_items = _response_data(years)
         if not isinstance(year_items, list):
             return {}
 
-        results: dict[str, Any] = {}
-        for year in year_items:
+        async def fetch_year(year: Any) -> tuple[str, dict[str, Any]] | None:
             if not isinstance(year, dict) or year.get("id") is None:
-                continue
+                return None
             year_id = year["id"]
             params = {**student_filter, "filter[year]": year_id, "per_page": 250}
-            grades = await self._request_first_available(
-                (
-                    "grades",
-                    {**params, "include": "collection"},
-                )
-            )
-            finalgrades = await self._request_first_available(
-                ("finalgrades", params)
-            )
-            results[str(year_id)] = {
-                "year": year,
-                "grades": grades,
-                "finalgrades": finalgrades,
-                "finalgrade_details": await self._fetch_finalgrade_details(
-                    finalgrades
+            grades, finalgrades = await asyncio.gather(
+                self._request_first_available(
+                    (
+                        "grades",
+                        {**params, "include": "collection"},
+                    )
                 ),
-            }
+                self._request_first_available(("finalgrades", params)),
+            )
+            return (
+                str(year_id),
+                {
+                    "year": year,
+                    "grades": grades,
+                    "finalgrades": finalgrades,
+                    "finalgrade_details": await self._fetch_finalgrade_details(
+                        finalgrades
+                    ),
+                },
+            )
+
+        year_results = await asyncio.gather(*(fetch_year(year) for year in year_items))
+        results = dict(result for result in year_results if result is not None)
+        if any(
+            not _is_error_response(year_data.get(key))
+            for year_data in results.values()
+            for key in ("grades", "finalgrades")
+        ):
+            self._grade_history_cache[student_key] = (
+                time.monotonic(),
+                copy.deepcopy(results),
+            )
         return results
 
     async def _fetch_finalgrade_details(self, finalgrades: Any) -> dict[str, Any]:
         """Fetch every finalgrade detail response with limited concurrency."""
         items = (
-            finalgrades.get("data")
-            if isinstance(finalgrades, dict)
-            else finalgrades
+            finalgrades.get("data") if isinstance(finalgrades, dict) else finalgrades
         )
         if not isinstance(items, list):
             return {}
@@ -286,11 +351,24 @@ class BesteSchuleApi:
         semaphore = asyncio.Semaphore(4)
 
         async def fetch(finalgrade_id: str) -> tuple[str, Any]:
+            cached = self._finalgrade_detail_cache.get(finalgrade_id)
+            if (
+                cached is not None
+                and time.monotonic() - cached[0] < FINALGRADE_DETAIL_CACHE_SECONDS
+            ):
+                return finalgrade_id, copy.deepcopy(cached[1])
             async with semaphore:
                 try:
                     response = await self.request(f"finalgrades/{finalgrade_id}")
+                except BesteSchuleAuthError:
+                    raise
                 except BesteSchuleApiError as err:
                     response = {"error": str(err)}
+                else:
+                    self._finalgrade_detail_cache[finalgrade_id] = (
+                        time.monotonic(),
+                        copy.deepcopy(response),
+                    )
                 return finalgrade_id, response
 
         return dict(await asyncio.gather(*(fetch(value) for value in sorted(ids))))
@@ -301,23 +379,59 @@ class BesteSchuleApi:
         | tuple[tuple[str, dict[str, Any] | None], ...],
     ) -> Any:
         """Request a route, optionally trying fallback route/parameter pairs."""
-        requests = (
-            (route_info,)
-            if isinstance(route_info[0], str)
-            else route_info
-        )
+        requests = (route_info,) if isinstance(route_info[0], str) else route_info
         last_error: BesteSchuleApiError | None = None
         for request_route, request_params in requests:
             try:
                 return await self.request(request_route, params=request_params)
+            except BesteSchuleAuthError:
+                raise
             except BesteSchuleApiError as err:
                 last_error = err
 
         return {
-            "error": str(last_error)
-            if last_error
-            else "Unknown beste.schule API error"
+            "error": str(last_error) if last_error else "Unknown beste.schule API error"
         }
+
+    async def _request_routes(
+        self,
+        routes: dict[
+            str,
+            tuple[str, dict[str, Any] | None]
+            | tuple[tuple[str, dict[str, Any] | None], ...],
+        ],
+    ) -> dict[str, Any]:
+        """Fetch independent API routes concurrently with the global request limit."""
+
+        async def fetch_route(key: str, route_info: Any) -> tuple[str, Any]:
+            return key, await self._request_first_available(route_info)
+
+        return dict(
+            await asyncio.gather(
+                *(fetch_route(key, route_info) for key, route_info in routes.items())
+            )
+        )
+
+    async def _request_first_available_cached(
+        self,
+        route_info: tuple[str, dict[str, Any] | None]
+        | tuple[tuple[str, dict[str, Any] | None], ...],
+        *,
+        cache_key: str,
+        max_age: float,
+    ) -> Any:
+        """Return a shared API response while avoiding repeated child requests."""
+        cached = self._response_cache.get(cache_key)
+        if cached is not None and time.monotonic() - cached[0] < max_age:
+            return copy.deepcopy(cached[1])
+
+        response = await self._request_first_available(route_info)
+        if not _is_error_response(response):
+            self._response_cache[cache_key] = (
+                time.monotonic(),
+                copy.deepcopy(response),
+            )
+        return response
 
 
 def _first_student_id(students: Any) -> int | str | None:
@@ -401,7 +515,12 @@ def _filter_overview_for_student(data: dict[str, Any], student: dict[str, Any]) 
     _filter_timetable(data.get("time_tables_current"), student_context)
     _filter_substitution_days(data.get("substitution_days"), student_context)
     _filter_journal_weeks(data.get("journal_weeks"), student_context)
-    for key in ("journal_lesson_student", "journal_day_student", "grades", "finalgrades"):
+    for key in (
+        "journal_lesson_student",
+        "journal_day_student",
+        "grades",
+        "finalgrades",
+    ):
         _filter_data_list(data.get(key), student_context)
     grade_years = data.get("grade_years")
     if isinstance(grade_years, dict):
@@ -454,7 +573,9 @@ def _filter_substitution_days(value: Any, student: dict[str, Any]) -> None:
         if not isinstance(day, dict) or not isinstance(day.get("lessons"), list):
             continue
         day["lessons"] = [
-            item for item in day["lessons"] if _item_matches_student_context(item, student)
+            item
+            for item in day["lessons"]
+            if _item_matches_student_context(item, student)
         ]
 
 
@@ -499,6 +620,11 @@ def _response_data(value: Any) -> Any:
     if isinstance(value, dict) and "data" in value:
         return value["data"]
     return value
+
+
+def _is_error_response(value: Any) -> bool:
+    """Return whether an optional endpoint contains a captured API error."""
+    return isinstance(value, dict) and isinstance(value.get("error"), str)
 
 
 def _item_matches_student_context(item: Any, student: dict[str, Any]) -> bool:

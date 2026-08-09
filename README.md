@@ -22,6 +22,8 @@ This custom integration connects Home Assistant to [beste.schule](https://beste.
 - Homework to-do list from visible journal notes
 - School time binary sensor
 - Current lesson and next lesson sensors
+- Sick-days sensor
+- Current school-year sensor
 - Grade average sensors per subject
 - Grade averages use beste.schule calculation rules and collection weights when available
 - Class sensor
@@ -81,7 +83,9 @@ The integration currently creates:
 - `binary_sensor`: school time
 - `sensor`: current lesson
 - `sensor`: next lesson
+- `sensor`: sick days
 - `sensor`: class
+- `sensor`: school year
 - `sensor`: timetable card data
 - `sensor`: grade average per subject
 

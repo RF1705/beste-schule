@@ -30,6 +30,13 @@
           "enable_notice_calendar": "Erstellt einen Home-Assistant-Kalender für schulweite Tageshinweise.",
           "enable_homework_todo": "Erstellt eine Home-Assistant-To-do-Liste für Hausaufgaben."
         }
+      },
+      "reauth_confirm": {
+        "title": "beste.schule neu verbinden",
+        "description": "Der gespeicherte Personal Access Token wird nicht mehr akzeptiert. Erstelle in beste.schule einen neuen Token und füge ihn hier ein.",
+        "data": {
+          "token": "Personal Access Token"
+        }
       }
     },
     "error": {
