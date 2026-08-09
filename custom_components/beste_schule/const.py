@@ -5,6 +5,7 @@ DEFAULT_API_URL = "https://beste.schule/api"
 
 CONF_TOKEN = "token"
 CONF_SCHOOL_NAME = "school_name"
+CONF_MIGRATE_STUDENT_IDS = "_migrate_student_ids"
 CONF_ENABLE_TIMETABLE_CALENDAR = "enable_timetable_calendar"
 CONF_ENABLE_ABSENCE_CALENDAR = "enable_absence_calendar"
 CONF_ENABLE_HOMEWORK_CALENDAR = "enable_homework_calendar"

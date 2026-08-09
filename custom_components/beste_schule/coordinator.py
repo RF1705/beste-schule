@@ -7,10 +7,12 @@ from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import BesteSchuleApi, BesteSchuleApiError
+from .api import BesteSchuleApi, BesteSchuleApiError, BesteSchuleAuthError
 from .const import DOMAIN
+from .entity import student_id_from_data
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,19 +41,36 @@ class BesteSchuleDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if isinstance(student, dict) and student.get("id") is not None
             else "student"
         )
+        self._student_id_resolved = False
+        self.data_revision = 0
+        self.timetable_generated_cache: dict[
+            bool, tuple[tuple[int, Any], list[Any]]
+        ] = {}
+        self.timetable_card_cache: dict[tuple[int, Any, int], list[dict[str, Any]]] = {}
+        self.timetable_history_generation = 0
+        self.timetable_history_saved_generation = 0
+        self.lesson_boundary_manager: Any | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from beste.schule."""
         try:
-            return await self.api.fetch_overview(self.student, self.students)
+            data = await self.api.fetch_overview(self.student, self.students)
+        except BesteSchuleAuthError as err:
+            raise ConfigEntryAuthFailed(str(err)) from err
         except BesteSchuleApiError as err:
             raise UpdateFailed(str(err)) from err
+        if not self._student_id_resolved:
+            self.student_id = student_id_from_data(data)
+            self._student_id_resolved = True
+        data["identifier_student_id"] = self.student_id
+        self.data_revision += 1
+        self.timetable_generated_cache.clear()
+        self.timetable_card_cache.clear()
+        return data
 
     def unique_id_prefix(self, entry_id: str) -> str:
         """Return the entity unique id prefix for this child."""
-        if isinstance(self.data, dict) and self.data.get("multi_student"):
-            return f"{entry_id}_{self.student_id}"
-        return entry_id
+        return f"{entry_id}_{self.student_id}"
 
 
 def coordinators_for_entry(

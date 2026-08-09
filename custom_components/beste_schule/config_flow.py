@@ -39,10 +39,7 @@ OPTION_KEYS = (
 def _options_schema(options: dict[str, bool]) -> vol.Schema:
     """Return the shared feature options schema."""
     return vol.Schema(
-        {
-            vol.Required(key, default=options[key]): bool
-            for key in OPTION_KEYS
-        }
+        {vol.Required(key, default=options[key]): bool for key in OPTION_KEYS}
     )
 
 
@@ -126,10 +123,11 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> str:
 class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for beste.schule."""
 
-    VERSION = 1
+    VERSION = 2
 
     _token: str
     _title: str
+    _reauth_entry: config_entries.ConfigEntry
 
     @staticmethod
     def async_get_options_flow(
@@ -145,9 +143,10 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            token = user_input[CONF_TOKEN]
+            token = user_input[CONF_TOKEN].strip()
+            normalized_input = {**user_input, CONF_TOKEN: token}
             try:
-                title = await _validate_input(self.hass, user_input)
+                title = await _validate_input(self.hass, normalized_input)
             except BesteSchuleAuthError:
                 errors["base"] = "invalid_auth"
             except BesteSchuleApiError:
@@ -186,6 +185,40 @@ class BesteSchuleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="features",
             data_schema=_options_schema(DEFAULT_OPTIONS),
+        )
+
+    async def async_step_reauth(
+        self,
+        entry_data: dict[str, Any],
+    ) -> config_entries.ConfigFlowResult:
+        """Start reauthentication after the API rejects a stored token."""
+        self._reauth_entry = self._get_reauth_entry()
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Validate and store a replacement Personal Access Token."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            token = user_input[CONF_TOKEN].strip()
+            try:
+                await _validate_input(self.hass, {CONF_TOKEN: token})
+            except BesteSchuleAuthError:
+                errors["base"] = "invalid_auth"
+            except BesteSchuleApiError:
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_update_reload_and_abort(
+                    self._reauth_entry,
+                    data_updates={CONF_TOKEN: token},
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_TOKEN): str}),
+            errors=errors,
         )
 
 

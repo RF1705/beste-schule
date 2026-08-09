@@ -32,6 +32,7 @@ from .entity import besteschule_device_info
 
 STORE_VERSION = 1
 HISTORY_STORE_VERSION = 1
+HISTORY_RETENTION_DAYS = 365
 NEEDS_ACTION = TodoItemStatus.NEEDS_ACTION
 COMPLETE = (
     TodoItemStatus.COMPLETE
@@ -149,6 +150,17 @@ class BesteSchuleHomeworkTodoList(
             if self._history.get(uid) != history_entry:
                 self._history[uid] = history_entry
                 changed = True
+        retention_date = now.date() - timedelta(days=HISTORY_RETENTION_DAYS)
+        expired_uids = {
+            uid
+            for uid, entry in self._history.items()
+            if isinstance(entry.get("date"), date) and entry["date"] < retention_date
+        }
+        if expired_uids:
+            for uid in expired_uids:
+                self._history.pop(uid, None)
+            self._completed_uids.difference_update(expired_uids)
+            changed = True
         return changed
 
     def _handle_coordinator_update(self) -> None:
@@ -181,10 +193,7 @@ class BesteSchuleHomeworkTodoList(
         """Persist locally cached homework items."""
         self._history_save_pending = False
         await self._history_store.async_save(
-            {
-                uid: _entry_to_storage(entry)
-                for uid, entry in self._history.items()
-            }
+            {uid: _entry_to_storage(entry) for uid, entry in self._history.items()}
         )
 
 

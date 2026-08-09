@@ -103,9 +103,7 @@ TITLE_KEYS = (
 )
 ROOM_KEYS = ("room", "rooms", "roomName", "room_name")
 TEACHER_KEYS = ("teacher", "teachers", "teacherName", "teacher_name")
-TIMETABLE_SOURCE_KEYS = (
-    "time_tables_current",
-)
+TIMETABLE_SOURCE_KEYS = ("time_tables_current",)
 TIMETABLE_CACHE_DAYS = 21
 TIMETABLE_HISTORY_STORE_VERSION = 1
 
@@ -568,7 +566,9 @@ def _date_for_weekday(start_date: date, weekday: int) -> date:
     return start_date + timedelta(days=(weekday - start_date.weekday()) % 7)
 
 
-def _event_key(day: date, start: time, end: time, title: str, location: str | None) -> str:
+def _event_key(
+    day: date, start: time, end: time, title: str, location: str | None
+) -> str:
     """Build a stable duplicate-detection key."""
     return f"{day.isoformat()}|{start.isoformat()}|{end.isoformat()}|{title}|{location or ''}"
 
@@ -584,7 +584,9 @@ def _all_text(value: Any) -> str:
     return ""
 
 
-def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[str, Any]]:
+def _substitution_overlay(
+    data: dict[str, Any],
+) -> dict[tuple[date, int], dict[str, Any]]:
     """Return cancellation/substitution markers keyed by date and lesson number."""
     overlay: dict[tuple[date, int], dict[str, Any]] = {}
     source = data.get("substitution_days")
@@ -609,9 +611,8 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
         if status in {"initial", "hold", "regular"}:
             continue
         text = _all_text(item.get("notes")).lower()
-        if (
-            status in {"cancelled", "canceled", "ausfall", "free"}
-            or any(marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel"))
+        if status in {"cancelled", "canceled", "ausfall", "free"} or any(
+            marker in text for marker in ("ausfall", "entfällt", "entfaellt", "cancel")
         ):
             overlay[key] = {"status": "cancelled"}
         elif status in {"planned", "substitution", "vertretung"} or any(
@@ -619,7 +620,8 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
         ):
             overlay[key] = {
                 "status": "substitution",
-                "title": _find_text(item, TITLE_KEYS) or _find_nested_text(item, TITLE_KEYS),
+                "title": _find_text(item, TITLE_KEYS)
+                or _find_nested_text(item, TITLE_KEYS),
                 "location": _direct_relation_text(
                     item,
                     ROOM_KEYS,
@@ -654,7 +656,9 @@ def _substitution_overlay(data: dict[str, Any]) -> dict[tuple[date, int], dict[s
                     "location": location,
                     "locations": _direct_relation_texts(item, ROOM_KEYS, _room_text),
                     "teacher": teacher,
-                    "teachers": _direct_relation_texts(item, TEACHER_KEYS, _teacher_text),
+                    "teachers": _direct_relation_texts(
+                        item, TEACHER_KEYS, _teacher_text
+                    ),
                     "notes": notes,
                 }
     return overlay
@@ -671,10 +675,15 @@ def _lesson_events(
     seen: set[str] = set()
     period_map = _period_time_map(data)
     overlay = _substitution_overlay(data)
+    school_name = school_name_from_data(data)
+    school_day_cache: dict[date, bool] = {}
+    short_schedule_cache: dict[date, bool] = {}
+    daily_period_maps: dict[date, dict[int, tuple[time, time]]] = {}
     source_data = {
         key: value
         for key, value in data.items()
-        if key in TIMETABLE_SOURCE_KEYS and not (isinstance(value, dict) and "error" in value)
+        if key in TIMETABLE_SOURCE_KEYS
+        and not (isinstance(value, dict) and "error" in value)
     }
 
     for item in _iter_values(source_data):
@@ -691,7 +700,11 @@ def _lesson_events(
                 start_time, end_time = period_map[int(number)]
             except (KeyError, TypeError, ValueError):
                 pass
-        if (lesson_date is None and weekday is None) or start_time is None or end_time is None:
+        if (
+            (lesson_date is None and weekday is None)
+            or start_time is None
+            or end_time is None
+        ):
             continue
 
         title = _find_nested_text(item, TITLE_KEYS)
@@ -701,7 +714,6 @@ def _lesson_events(
         number = _find_value(item, LESSON_NR_KEYS)
         location = _find_nested_relation_text(item, ROOM_KEYS, _room_text)
         teacher = _find_nested_relation_text(item, TEACHER_KEYS, _teacher_text)
-        school_name = school_name_from_data(data)
         description_parts = []
         if location:
             description_parts.append(f"Raum: {location}")
@@ -719,13 +731,24 @@ def _lesson_events(
                 current_day += timedelta(days=7)
 
         for current_day in lesson_dates:
-            if not _is_timetable_school_day(data, current_day):
+            is_school_day = school_day_cache.get(current_day)
+            if is_school_day is None:
+                is_school_day = _is_timetable_school_day(data, current_day)
+                school_day_cache[current_day] = is_school_day
+            if not is_school_day:
                 continue
 
             current_start_time = start_time
             current_end_time = end_time
-            if _day_uses_short_schedule(data, current_day):
-                short_period_map = _period_time_map(data, current_day)
+            uses_short_schedule = short_schedule_cache.get(current_day)
+            if uses_short_schedule is None:
+                uses_short_schedule = _day_uses_short_schedule(data, current_day)
+                short_schedule_cache[current_day] = uses_short_schedule
+            if uses_short_schedule:
+                short_period_map = daily_period_maps.get(current_day)
+                if short_period_map is None:
+                    short_period_map = _period_time_map(data, current_day)
+                    daily_period_maps[current_day] = short_period_map
                 try:
                     current_start_time, current_end_time = short_period_map[int(number)]
                 except (KeyError, TypeError, ValueError):
@@ -752,7 +775,9 @@ def _lesson_events(
                 )
                 if key not in seen:
                     seen.add(key)
-                    substitution_title = overlay_value.get("title") if overlay_value else None
+                    substitution_title = (
+                        overlay_value.get("title") if overlay_value else None
+                    )
                     summary = (
                         f"Ausfall: {title}"
                         if overlay_status == "cancelled"
@@ -786,7 +811,9 @@ def _lesson_events(
                         )
                         if isinstance(substitution_teachers, list):
                             substitution_teacher = (
-                                _replacement_teacher_text(substitution_teachers, teacher)
+                                _replacement_teacher_text(
+                                    substitution_teachers, teacher
+                                )
                                 or substitution_teacher
                             )
                         if isinstance(substitution_locations, list):
@@ -798,8 +825,12 @@ def _lesson_events(
                             part
                             for part in (
                                 f"Vertretung für: {title}",
-                                f"Raum: {substitution_location}" if substitution_location else None,
-                                f"Lehrer: {substitution_teacher}" if substitution_teacher else None,
+                                f"Raum: {substitution_location}"
+                                if substitution_location
+                                else None,
+                                f"Lehrer: {substitution_teacher}"
+                                if substitution_teacher
+                                else None,
                                 substitution_notes,
                             )
                             if part
@@ -909,8 +940,12 @@ def _apply_dated_substitution_lessons(
                 else _description_value(original, "Lehrer")
             )
             if status in {"planned", "substitution", "vertretung"}:
-                location = _replacement_room_text(locations, original_location) or location
-                teacher = _replacement_teacher_text(teachers, original_teacher) or teacher
+                location = (
+                    _replacement_room_text(locations, original_location) or location
+                )
+                teacher = (
+                    _replacement_teacher_text(teachers, original_teacher) or teacher
+                )
 
             if cancelled:
                 summary = f"Ausfall: {title}"
@@ -1008,51 +1043,75 @@ def _cached_lesson_events(
         coordinator.timetable_cache_start = cache_start
 
     horizon = now + timedelta(days=TIMETABLE_CACHE_DAYS)
-    cache: dict[str, CalendarEvent] = getattr(coordinator, "timetable_event_cache", {})
+    history: dict[str, CalendarEvent] = getattr(
+        coordinator, "timetable_event_cache", {}
+    )
     if not hasattr(coordinator, "timetable_event_cache"):
-        coordinator.timetable_event_cache = cache
-    _prune_invalid_schedule_events(coordinator.data, cache)
+        coordinator.timetable_event_cache = history
 
     visible_start = max(start_date, cache_start)
     visible_end = min(end_date, horizon)
     if visible_start >= visible_end:
         return []
 
-    cutoff = _history_cutoff()
-    live_start = max(visible_start, cutoff)
-    live_keys = [
-        key
-        for key, event in cache.items()
-        if event.start >= live_start and event.end > visible_start and event.start < visible_end
-    ]
-    for key in live_keys:
-        cache.pop(key, None)
+    generated = _coordinator_lesson_events(coordinator)
+    history_changed = False
+    for event in generated:
+        if event.start >= now:
+            continue
+        key = _cache_key(event)
+        if key not in history:
+            history[key] = event
+            history_changed = True
+    if history_changed:
+        coordinator.timetable_history_generation += 1
 
-    if visible_start < cutoff:
-        for event in _lesson_events(
-            coordinator.data,
-            visible_start,
-            min(visible_end, cutoff),
-        ):
-            cache.setdefault(_cache_key(event), event)
-
-    if live_start < visible_end:
-        for event in _lesson_events(coordinator.data, live_start, visible_end):
-            cache[_cache_key(event)] = event
-
-    events = [
-        event
-        for event in cache.values()
-        if event.end > visible_start and event.start < visible_end
-    ]
+    events_by_key = {
+        _cache_key(event): event
+        for event in generated
+        if event.start >= now
+        and event.end > visible_start
+        and event.start < visible_end
+    }
+    events_by_key.update(
+        {
+            key: event
+            for key, event in history.items()
+            if event.end > visible_start and event.start < visible_end
+        }
+    )
+    events = list(events_by_key.values())
     events.sort(key=lambda event: _event_sort_value(event.start))
+    return events
+
+
+def _coordinator_lesson_events(
+    coordinator: BesteSchuleDataUpdateCoordinator,
+    *,
+    include_cancelled: bool = False,
+) -> list[CalendarEvent]:
+    """Return generated lessons cached for the current data revision and day."""
+    now = dt_util.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    signature = (coordinator.data_revision, today_start.date())
+    cached = coordinator.timetable_generated_cache.get(include_cancelled)
+    if cached is not None and cached[0] == signature:
+        return cached[1]
+
+    events = _lesson_events(
+        coordinator.data,
+        today_start,
+        today_start + timedelta(days=TIMETABLE_CACHE_DAYS + 1),
+        include_cancelled=include_cancelled,
+    )
+    coordinator.timetable_generated_cache[include_cancelled] = (signature, events)
     return events
 
 
 def _prune_invalid_schedule_events(
     data: dict[str, Any],
     cache: dict[str, CalendarEvent],
-) -> None:
+) -> bool:
     """Remove cached normal/short duplicates created for the wrong day type."""
     normal_pairs = set(_period_time_map(data).values())
     short_pairs: set[tuple[time, time]] = set()
@@ -1075,8 +1134,9 @@ def _prune_invalid_schedule_events(
                     short_pairs.add((start_time, end_time))
 
     if not normal_pairs or not short_pairs:
-        return
+        return False
 
+    changed = False
     for key, event in list(cache.items()):
         pair = (
             event.start.timetz().replace(tzinfo=None),
@@ -1087,6 +1147,8 @@ def _prune_invalid_schedule_events(
         valid_pairs = short_pairs if uses_short_schedule else normal_pairs
         if pair in invalid_pairs and pair not in valid_pairs:
             cache.pop(key, None)
+            changed = True
+    return changed
 
 
 def _cache_key(event: CalendarEvent) -> str:
@@ -1483,7 +1545,9 @@ def _exam_entries(
                     }
                 )
 
-    entries.sort(key=lambda entry: (entry["date"], entry["number"] or 99, entry["title"]))
+    entries.sort(
+        key=lambda entry: (entry["date"], entry["number"] or 99, entry["title"])
+    )
     return entries
 
 
@@ -1573,6 +1637,7 @@ class BesteSchuleTimetableCalendar(
             TIMETABLE_HISTORY_STORE_VERSION,
             f"{DOMAIN}_{unique_prefix}_timetable_history",
         )
+        self._history_save_pending = False
 
     async def async_added_to_hass(self) -> None:
         """Load frozen timetable history."""
@@ -1586,8 +1651,27 @@ class BesteSchuleTimetableCalendar(
                 event = _event_from_storage(value)
                 if event is not None:
                     cache[key] = event
-        _prune_invalid_schedule_events(self.coordinator.data, cache)
+        if _prune_invalid_schedule_events(self.coordinator.data, cache):
+            self.coordinator.timetable_history_generation += 1
         self.coordinator.timetable_event_cache = cache
+        now = dt_util.now()
+        _cached_lesson_events(
+            self.coordinator,
+            now.replace(hour=0, minute=0, second=0, microsecond=0),
+            now + timedelta(days=TIMETABLE_CACHE_DAYS),
+        )
+        await self._async_save_history()
+
+    def _handle_coordinator_update(self) -> None:
+        """Snapshot today's timetable and persist newly finished lessons."""
+        now = dt_util.now()
+        _cached_lesson_events(
+            self.coordinator,
+            now.replace(hour=0, minute=0, second=0, microsecond=0),
+            now + timedelta(days=TIMETABLE_CACHE_DAYS),
+        )
+        self._schedule_history_save()
+        super()._handle_coordinator_update()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1603,6 +1687,7 @@ class BesteSchuleTimetableCalendar(
             now,
             now + timedelta(days=TIMETABLE_CACHE_DAYS),
         )
+        self._schedule_history_save()
         return events[0] if events else None
 
     async def async_get_events(
@@ -1616,8 +1701,33 @@ class BesteSchuleTimetableCalendar(
         await self._async_save_history()
         return events
 
+    def _schedule_history_save(self) -> None:
+        """Schedule persistence from synchronous entity callbacks."""
+        if (
+            self._history_save_pending
+            or self.coordinator.timetable_history_generation
+            == self.coordinator.timetable_history_saved_generation
+        ):
+            return
+        self._history_save_pending = True
+        self.hass.async_create_task(self._async_save_scheduled_history())
+
+    async def _async_save_scheduled_history(self) -> None:
+        """Persist history and allow a later snapshot to schedule another save."""
+        completed = False
+        try:
+            await self._async_save_history()
+            completed = True
+        finally:
+            self._history_save_pending = False
+        if completed:
+            self._schedule_history_save()
+
     async def _async_save_history(self) -> None:
         """Persist frozen timetable history."""
+        generation = self.coordinator.timetable_history_generation
+        if generation == self.coordinator.timetable_history_saved_generation:
+            return
         cutoff = _history_cutoff()
         cache: dict[str, CalendarEvent] = getattr(
             self.coordinator,
@@ -1630,6 +1740,8 @@ class BesteSchuleTimetableCalendar(
             if event.start < cutoff
         }
         await self._store.async_save(history)
+        if generation == self.coordinator.timetable_history_generation:
+            self.coordinator.timetable_history_saved_generation = generation
 
 
 class BesteSchuleAbsenceCalendar(
@@ -1646,7 +1758,9 @@ class BesteSchuleAbsenceCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_absences"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_absences"
+        )
         self._entry = entry
 
     @property
@@ -1685,7 +1799,9 @@ class BesteSchuleHomeworkCalendar(
         coordinator: BesteSchuleDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.unique_id_prefix(entry.entry_id)}_homework"
+        self._attr_unique_id = (
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_homework"
+        )
         self._entry = entry
 
     @property
