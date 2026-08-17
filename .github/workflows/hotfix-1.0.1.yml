@@ -25,25 +25,25 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import json
+          import re
 
           api_path = Path("custom_components/beste_schule/api.py")
           api = api_path.read_text()
-          old = '''            self._request_first_available_cached(
-                ("time-tables/current", None),
-                cache_key="time_tables_current",
-                max_age=SHARED_DATA_CACHE_SECONDS,
-            ),'''
-          new = '''            self._request_first_available_cached(
-                (
-                    "time-tables/current",
-                    {"include": "lessons.times"},
-                ),
-                cache_key="time_tables_current",
-                max_age=SHARED_DATA_CACHE_SECONDS,
-            ),'''
-          if api.count(old) != 1:
-              raise SystemExit("Expected timetable request block not found exactly once")
-          api_path.write_text(api.replace(old, new, 1))
+          pattern = re.compile(
+              r'(self\._request_first_available_cached\(\s*)'
+              r'\("time-tables/current", None\),'
+              r'(\s*cache_key="time_tables_current",)'
+          )
+          replacement = (
+              r'\1(\n'
+              r'                    "time-tables/current",\n'
+              r'                    {"include": "lessons.times"},\n'
+              r'                ),\2'
+          )
+          api, count = pattern.subn(replacement, api, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected one timetable request block, changed {count}")
+          api_path.write_text(api)
 
           test_path = Path("tests/test_api.py")
           tests = test_path.read_text()
