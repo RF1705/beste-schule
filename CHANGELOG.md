@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - 2026-08-17
+
+### Fixed
+
+- Restore timetable calendar events after beste.schule moved lesson times behind the `lessons.times` include relation.
+- Keep compatibility with the new per-lesson `time` object containing `from` and `to`.
+
 ## 1.0.0 - 2026-08-09
 
 First stable release.

@@ -103,3 +103,22 @@ async def test_finalgrade_detail_propagates_auth_error() -> None:
 
     with pytest.raises(BesteSchuleAuthError):
         await api._fetch_finalgrade_details([{"id": 42}])
+
+
+@pytest.mark.asyncio
+async def test_fetch_overview_requests_timetable_lesson_times() -> None:
+    """The current timetable must explicitly include per-lesson times."""
+    api = object.__new__(BesteSchuleApi)
+    api._response_cache = {}
+    api._request_first_available_cached = AsyncMock(return_value={"data": []})
+    api._request_routes = AsyncMock(return_value={})
+    api._fetch_finalgrade_details = AsyncMock(return_value={})
+    api._fetch_grade_years = AsyncMock(return_value={})
+
+    await api.fetch_overview(students={"data": [{"id": 1}]})
+
+    assert any(
+        args[0] == ("time-tables/current", {"include": "lessons.times"})
+        and kwargs.get("cache_key") == "time_tables_current"
+        for args, kwargs in api._request_first_available_cached.call_args_list
+    )

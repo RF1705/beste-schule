@@ -153,7 +153,10 @@ class BesteSchuleApi:
                 max_age=SCHOOL_METADATA_CACHE_SECONDS,
             ),
             self._request_first_available_cached(
-                ("time-tables/current", None),
+                (
+                    "time-tables/current",
+                    {"include": "lessons.times"},
+                ),
                 cache_key="time_tables_current",
                 max_age=SHARED_DATA_CACHE_SECONDS,
             ),
