@@ -704,6 +704,7 @@ def _timetable_card_rows(
         if event.end > week_start and event.start < week_end
     ]
     rows: dict[int, dict[str, Any]] = {}
+    fallback_numbers: dict[tuple[str, str], int] = {}
     fallback_number = 100
     normal_period_map = _period_time_map(coordinator.data)
     daily_period_maps: dict[Any, dict[int, tuple[Any, Any]]] = {}
@@ -733,8 +734,12 @@ def _timetable_card_rows(
             None,
         )
         if number is None:
-            number = fallback_number
-            fallback_number += 1
+            fallback_key = (start, end)
+            number = fallback_numbers.get(fallback_key)
+            if number is None:
+                number = fallback_number
+                fallback_numbers[fallback_key] = number
+                fallback_number += 1
         normal_times = normal_period_map.get(number)
         row_start = normal_times[0].strftime("%H:%M") if normal_times else start
         row_end = normal_times[1].strftime("%H:%M") if normal_times else end

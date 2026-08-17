@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 - 2026-08-17
+
+### Fixed
+
+- Restore timetable-card lesson-number mapping from the new `lessons.times` relation.
+- Keep fallback timetable rows grouped by identical start/end times when no lesson number can be resolved.
+
 ## 1.0.1 - 2026-08-17
 
 ### Fixed

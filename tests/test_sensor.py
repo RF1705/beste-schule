@@ -1,10 +1,11 @@
 """Tests for safe grade formula evaluation."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
 from zoneinfo import ZoneInfo
 
+from homeassistant.components.calendar import CalendarEvent
 import pytest
 
 from custom_components.beste_schule import sensor
@@ -66,3 +67,39 @@ def test_grade_history_uses_fresh_value_for_current_year(monkeypatch) -> None:
     }
 
     assert _grade_year_history(data, "Mathematik") == {"2026/27": 2.0}
+
+
+def test_timetable_card_fallback_groups_matching_times(monkeypatch) -> None:
+    """Fallback rows with the same lesson time must share one card row."""
+    now = datetime(2026, 8, 17, 7, tzinfo=ZoneInfo("Europe/Berlin"))
+    monday = now.replace(hour=9, minute=50)
+    tuesday = monday + timedelta(days=1)
+    events = [
+        CalendarEvent(
+            summary="Musik",
+            start=monday,
+            end=monday + timedelta(minutes=45),
+        ),
+        CalendarEvent(
+            summary="Deutsch",
+            start=tuesday,
+            end=tuesday + timedelta(minutes=45),
+        ),
+    ]
+    coordinator = SimpleNamespace(
+        data={},
+        data_revision=1,
+        timetable_card_cache={},
+    )
+    monkeypatch.setattr(sensor.dt_util, "now", lambda: now)
+    monkeypatch.setattr(
+        sensor,
+        "_coordinator_lesson_events",
+        lambda *args, **kwargs: events,
+    )
+
+    rows = _timetable_card_rows(coordinator, 0)
+
+    assert len(rows) == 1
+    assert rows[0]["Mo"] == "Musik"
+    assert rows[0]["Di"] == "Deutsch"

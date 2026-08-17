@@ -1,6 +1,6 @@
 """Tests for timetable generation caching."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 from zoneinfo import ZoneInfo
@@ -49,3 +49,21 @@ async def test_history_save_checks_for_changes_during_write() -> None:
 
     assert entity._history_save_pending is False
     entity._schedule_history_save.assert_called_once_with()
+
+
+def test_period_time_map_uses_timetable_lesson_time_relation() -> None:
+    """The timetable include must provide period numbers and their new time relation."""
+    data = {
+        "time_tables_current": {
+            "data": {
+                "lessons": [
+                    {
+                        "nr": 3,
+                        "time": {"from": "09:50", "to": "10:35"},
+                    }
+                ]
+            }
+        }
+    }
+
+    assert calendar._period_time_map(data) == {3: (time(9, 50), time(10, 35))}

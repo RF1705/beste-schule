@@ -503,6 +503,24 @@ def _period_time_map(
                 except (TypeError, ValueError):
                     continue
 
+    # Since August 2026, timetable lesson times may only be available on the
+    # included lessons.times relation instead of the school metadata.
+    for lesson in _iter_values(data.get("time_tables_current")):
+        if not isinstance(lesson, dict):
+            continue
+        number = _find_direct_value(lesson, LESSON_NR_KEYS)
+        lesson_time = lesson.get("time")
+        if number is None or not isinstance(lesson_time, dict):
+            continue
+        start_time = _parse_time(_find_value(lesson_time, START_KEYS))
+        end_time = _parse_time(_find_value(lesson_time, END_KEYS))
+        if start_time is None or end_time is None:
+            continue
+        try:
+            period_map.setdefault(int(number), (start_time, end_time))
+        except (TypeError, ValueError):
+            continue
+
     return period_map
 
 
