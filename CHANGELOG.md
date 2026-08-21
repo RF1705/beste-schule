@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 - 2026-08-21
+
+### Fixed
+
+- Limit the HACS catalog entry to Germany with `"country": "DE"`.
+- Require Home Assistant 2026.3.0 so the bundled integration brand assets are supported.
+
 ## 1.0.2 - 2026-08-17
 
 ### Fixed
