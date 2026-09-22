@@ -1135,9 +1135,10 @@ def _coordinator_lesson_events(
     if cached is not None and cached[0] == signature:
         return cached[1]
 
+    week_start = today_start - timedelta(days=now.weekday())
     events = _lesson_events(
         coordinator.data,
-        today_start,
+        week_start,
         today_start + timedelta(days=TIMETABLE_CACHE_DAYS + 1),
         include_cancelled=include_cancelled,
     )
