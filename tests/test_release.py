@@ -2,7 +2,8 @@
 
 import json
 from pathlib import Path
-import re
+
+from awesomeversion import AwesomeVersion, AwesomeVersionStrategy
 
 import pytest
 
@@ -32,4 +33,4 @@ def test_manifest_uses_semantic_version() -> None:
         )
     )
 
-    assert re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"])
+    assert AwesomeVersion(manifest["version"]).strategy == AwesomeVersionStrategy.SEMVER

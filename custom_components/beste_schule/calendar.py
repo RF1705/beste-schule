@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from collections import Counter
 from datetime import date, datetime, time, timedelta
+import logging
 import re
 from typing import Any
 
@@ -106,6 +108,23 @@ TEACHER_KEYS = ("teacher", "teachers", "teacherName", "teacher_name")
 TIMETABLE_SOURCE_KEYS = ("time_tables_current",)
 TIMETABLE_CACHE_DAYS = 21
 TIMETABLE_HISTORY_STORE_VERSION = 1
+LOGGER = logging.getLogger(__name__)
+EXAM_ABBREVIATIONS = {"wü", "tü", "wue", "tue"}
+EXAM_MARKERS = (
+    "klassenarbeit",
+    "leistungskontrolle",
+    " lk",
+    "lk ",
+    "kurztest",
+    "test",
+    "arbeit",
+    "exam",
+    "classwork",
+    "wissensüberprüfung",
+    "wissensueberpruefung",
+    "tägliche übung",
+    "taegliche uebung",
+)
 
 
 async def async_setup_entry(
@@ -1512,6 +1531,8 @@ def _exam_entries(
     end_date: datetime,
 ) -> list[dict[str, Any]]:
     """Return classwork-like journal notes as stable internal items."""
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        _log_exam_diagnostics(data, start_date, end_date)
     entries: list[dict[str, Any]] = []
     for source_key in _exam_source_keys(data):
         for item in _iter_values(data.get(source_key)):
@@ -1581,21 +1602,71 @@ def _exam_source_keys(data: dict[str, Any]) -> tuple[str, ...]:
 
 def _is_exam_note(note: dict[str, Any]) -> bool:
     """Return whether a journal note looks like classwork or an exam."""
-    note_type = (_note_type_name(note) or "").lower()
-    description = (_extract_text(note.get("description")) or "").lower()
+    return bool(_exam_note_markers(note))
+
+
+def _exam_note_markers(note: dict[str, Any]) -> list[str]:
+    """Return only fixed recognition labels, never arbitrary API text."""
+    note_type = (_note_type_name(note) or "").casefold()
+    description = (_extract_text(note.get("description")) or "").casefold()
     text = f"{note_type} {description}"
-    markers = (
-        "klassenarbeit",
-        "leistungskontrolle",
-        " lk",
-        "lk ",
-        "kurztest",
-        "test",
-        "arbeit",
-        "exam",
-        "classwork",
-    )
-    return note_type == "lk" or any(marker in text for marker in markers)
+    words = set(re.findall(r"[^\W\d_]+", text))
+    return sorted(EXAM_ABBREVIATIONS & words) + [
+        marker.strip() for marker in EXAM_MARKERS if marker in text
+    ]
+
+
+def _log_exam_diagnostics(
+    data: dict[str, Any], start_date: datetime, end_date: datetime
+) -> None:
+    """Summarize all journal sources without logging personal data or free text."""
+    selected = _exam_source_keys(data)
+    for source in ("journal_lessons", "journal_weeks", "journal_lesson_student"):
+        response = data.get(source)
+        status = (
+            "missing"
+            if response is None
+            else "error"
+            if isinstance(response, dict) and "error" in response
+            else "ok"
+        )
+        counts: Counter[str] = Counter()
+        markers: Counter[str] = Counter()
+        for item in _iter_values(response):
+            if "notes" not in item:
+                continue
+            notes = item["notes"]
+            if not isinstance(notes, list):
+                counts["unsupported_notes_shape"] += 1
+                continue
+            note_date = _note_date(item)
+            for note in notes:
+                counts["notes"] += 1
+                if not isinstance(note, dict):
+                    counts["invalid_note"] += 1
+                    continue
+                matched = _exam_note_markers(note)
+                markers.update(set(matched))
+                if not _note_type_name(note):
+                    counts["missing_type_name"] += 1
+                if not matched:
+                    counts["unrecognized"] += 1
+                elif note_date is None:
+                    counts["missing_date"] += 1
+                elif not start_date.date() <= note_date < end_date.date():
+                    counts["outside_requested_range"] += 1
+                elif source not in selected:
+                    counts["source_not_selected"] += 1
+                else:
+                    counts["accepted_before_deduplication"] += 1
+        LOGGER.debug(
+            "Exam diagnostics: source=%s status=%s selected=%s counts=%s markers=%s",
+            source,
+            status,
+            source in selected,
+            dict(counts),
+            dict(markers),
+        )
 
 
 def _note_type_name(note: dict[str, Any]) -> str | None:

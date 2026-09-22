@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.4-beta.1 - 2026-09-22
+
+Beta for investigating missing WÜ/TÜ calendar entries.
+
+- Recognize WÜ, TÜ, WUE, TUE, Wissensüberprüfung and tägliche Übung in journal note types and descriptions.
+- Match the new abbreviations as whole words to avoid unrelated text matches.
+- Add opt-in debug summaries for all three exam journal sources, including unused sources, missing dates, unrecognized notes and entries outside the requested range.
+- Debug summaries contain only counts and fixed recognition labels, without API payloads, identifiers, names or note text.
+- Keep existing journal source selection and cancelled-lesson behavior unchanged pending real-world diagnostics.
+
 ## 1.0.3 - 2026-08-21
 
 ### Fixed
