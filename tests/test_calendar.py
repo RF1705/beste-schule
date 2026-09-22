@@ -39,6 +39,29 @@ def test_generated_timetable_is_cached_per_data_revision(monkeypatch) -> None:
     assert generate.call_count == 2
 
 
+def test_generated_timetable_includes_current_week_before_today(monkeypatch) -> None:
+    """A restart later in the week must still regenerate Monday onward."""
+    now = datetime(2026, 9, 4, 12, tzinfo=ZoneInfo("Europe/Berlin"))
+    generate = Mock(return_value=[])
+    coordinator = SimpleNamespace(
+        data={},
+        data_revision=1,
+        timetable_generated_cache={},
+    )
+    monkeypatch.setattr(calendar.dt_util, "now", lambda: now)
+    monkeypatch.setattr(calendar, "_lesson_events", generate)
+
+    calendar._coordinator_lesson_events(coordinator, include_cancelled=True)
+
+    assert generate.call_args.args[1] == now.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=4)
+    assert generate.call_args.args[2] == now.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) + timedelta(days=calendar.TIMETABLE_CACHE_DAYS + 1)
+    assert generate.call_args.kwargs["include_cancelled"] is True
+
+
 @pytest.mark.asyncio
 async def test_history_save_checks_for_changes_during_write() -> None:
     """A snapshot created during storage I/O must trigger a follow-up save."""
