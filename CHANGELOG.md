@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4-beta.2 - 2026-09-22
+
+Extends the 1.0.4 beta with timetable fixes and downloadable diagnostics.
+
+- Regenerate the full current Monday-Friday timetable after a Home Assistant restart instead of starting at the current day.
+- Add Home Assistant config-entry diagnostics for timetable investigations.
+- Include the raw `time_tables_current` structure and generated lesson slots while redacting person-related fields.
+- Keep the WÜ/TÜ recognition and debug counters from beta.1 unchanged.
+
 ## 1.0.4-beta.1 - 2026-09-22
 
 Beta for investigating missing WÜ/TÜ calendar entries.
