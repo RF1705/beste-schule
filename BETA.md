@@ -1,4 +1,4 @@
-# Beta 1.0.4-beta.1: WÜ/TÜ im Arbeiten-Kalender
+# Beta 1.0.4-beta.2: WÜ/TÜ und Stundenplan-Diagnose
 
 Diese Beta ergänzt die Erkennung von WÜ/TÜ und hilft bei der Suche nach weiterhin fehlenden Terminen. Ob die Schule die Angaben in den von uns gelesenen API-Feldern liefert, muss mit einem echten Termin geprüft werden.
 
@@ -6,7 +6,7 @@ Diese Beta ergänzt die Erkennung von WÜ/TÜ und hilft bei der Suche nach weite
 
 Das vorbereitete ZIP enthält den Inhalt des Integrationsordners. Für eine manuelle Installation die Dateien nach `config/custom_components/beste_schule/` entpacken und die vorhandenen Integrationsdateien ersetzen. Danach Home Assistant neu starten. Die bestehende Einrichtung bleibt erhalten.
 
-Die Beta ist als GitHub-Vorabversion verfügbar: https://github.com/RF1705/beste-schule/releases/tag/v1.0.4-beta.1. In HACS gegebenenfalls Vorabversionen einblenden und Version `1.0.4-beta.1` auswählen.
+Die Beta ist als GitHub-Vorabversion verfügbar: https://github.com/RF1705/beste-schule/releases/tag/v1.0.4-beta.2. In HACS gegebenenfalls Vorabversionen einblenden und Version `1.0.4-beta.2` auswählen.
 
 ## Gezielt testen
 
@@ -25,6 +25,18 @@ Die neuen Diagnosezeilen enthalten je Quelle (`journal_lessons`, `journal_weeks`
 - `markers`: Häufigkeit fest definierter Erkennungsbegriffe wie `wü` oder `tü`. Unbekannte Typnamen und Freitexte werden nicht ausgegeben.
 
 Es handelt sich um Zähler aus der verschachtelten API-Struktur, nicht zwingend um die Anzahl eindeutiger Termine. Die Zusammenfassung wird bei Kalenderabfragen erzeugt und kann deshalb mehrfach erscheinen. Im gesamten Home-Assistant-Protokoll können andere Komponenten persönliche Daten ausgeben; für die Rückmeldung reichen die genannten Diagnosezeilen.
+
+## Stundenplan / A-B-Wochen diagnostizieren
+
+Diese Beta enthält zusätzlich den Fix, dass der Wochenplan nach einem Home-Assistant-Neustart auch die bereits vergangenen Tage der aktuellen Woche wieder erzeugt.
+
+Für Fälle mit vermischten A-/B-Wochen kann jetzt direkt über Home Assistant eine Diagnosedatei geladen werden:
+
+1. **Einstellungen → Geräte & Dienste → beste.schule** öffnen.
+2. Bei der Integration **Diagnosedaten herunterladen** wählen.
+3. Die erzeugte JSON-Datei an den GitHub-Issue anhängen.
+
+Die Diagnose enthält gezielt die Rohstruktur von `time_tables_current` sowie die daraus erzeugten Unterrichtstermine. Personenbezogene Felder wie Schüler- und Lehrerbezüge, Namen, E-Mail, Telefon oder Adresse werden redigiert. Fächer, Gruppen, Wochen-/Datumsfelder und die übrige Stundenplanstruktur bleiben sichtbar, damit A/B-Wochen-Markierungen gefunden werden können.
 
 ## Noch offen
 
