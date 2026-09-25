@@ -600,7 +600,7 @@ def _timetable_week_types(data: dict[str, Any], day: date) -> set[str] | None:
     return None
 
 
-def _lesson_applies_to_day(item: dict[str, Any], data: dict[str, Any], day: date) -> bool:
+def _lesson_applies_to_day(\n    item: dict[str, Any], data: dict[str, Any], day: date\n) -> bool:
     """Return whether a recurring lesson applies to the timetable week of a date."""
     lesson_weeks = item.get("weeks")
     if not isinstance(lesson_weeks, list) or not lesson_weeks:
