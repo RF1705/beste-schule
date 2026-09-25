@@ -67,3 +67,83 @@ def test_period_time_map_uses_timetable_lesson_time_relation() -> None:
     }
 
     assert calendar._period_time_map(data) == {3: (time(9, 50), time(10, 35))}
+
+
+def test_lesson_events_respect_timetable_week_types() -> None:
+    """Recurring lessons should only be generated in their configured A/B week."""
+    tz = ZoneInfo("Europe/Berlin")
+    data = {
+        "time_tables_current": {
+            "data": {
+                "valid_from": "2026-08-17",
+                "valid_to": "2026-09-30",
+                "weeks": [
+                    {"nr": 34, "year": "2026", "types": ["A"]},
+                    {"nr": 35, "year": "2026", "types": ["B"]},
+                ],
+                "lessons": [
+                    {
+                        "weeks": ["A"],
+                        "weekday": 1,
+                        "nr": 1,
+                        "subject": {"name": "Musik"},
+                        "time": {"from": "07:30", "to": "08:15"},
+                    },
+                    {
+                        "weeks": ["B"],
+                        "weekday": 1,
+                        "nr": 1,
+                        "subject": {"name": "Biologie"},
+                        "time": {"from": "07:30", "to": "08:15"},
+                    },
+                ],
+            }
+        }
+    }
+
+    events = calendar._lesson_events(
+        data,
+        datetime(2026, 8, 17, tzinfo=tz),
+        datetime(2026, 8, 31, tzinfo=tz),
+    )
+
+    assert [(event.start.date(), event.summary) for event in events] == [
+        (datetime(2026, 8, 17).date(), "Musik"),
+        (datetime(2026, 8, 24).date(), "Biologie"),
+    ]
+
+
+def test_lesson_events_keep_untyped_lessons() -> None:
+    """Lessons without a week restriction should remain valid in every week."""
+    tz = ZoneInfo("Europe/Berlin")
+    data = {
+        "time_tables_current": {
+            "data": {
+                "valid_from": "2026-08-17",
+                "valid_to": "2026-09-30",
+                "weeks": [
+                    {"nr": 34, "year": "2026", "types": ["A"]},
+                    {"nr": 35, "year": "2026", "types": ["B"]},
+                ],
+                "lessons": [
+                    {
+                        "weekday": 1,
+                        "nr": 1,
+                        "subject": {"name": "Mathematik"},
+                        "time": {"from": "07:30", "to": "08:15"},
+                    }
+                ],
+            }
+        }
+    }
+
+    events = calendar._lesson_events(
+        data,
+        datetime(2026, 8, 17, tzinfo=tz),
+        datetime(2026, 8, 31, tzinfo=tz),
+    )
+
+    assert [(event.start.date(), event.summary) for event in events] == [
+        (datetime(2026, 8, 17).date(), "Mathematik"),
+        (datetime(2026, 8, 24).date(), "Mathematik"),
+    ]
