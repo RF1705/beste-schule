@@ -32,4 +32,4 @@ def test_manifest_uses_semantic_version() -> None:
         )
     )
 
-    assert re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"])
+    assert re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", manifest["version"])
