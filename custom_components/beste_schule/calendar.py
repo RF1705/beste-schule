@@ -569,6 +569,57 @@ def _timetable_valid_range(data: dict[str, Any]) -> tuple[date | None, date | No
     )
 
 
+def _timetable_week_types(data: dict[str, Any], day: date) -> set[str] | None:
+    """Return the timetable week types configured for a calendar date."""
+    timetable = _timetable_data(data)
+    weeks = timetable.get("weeks")
+    if not isinstance(weeks, list):
+        return None
+
+    iso_year, iso_week, _ = day.isocalendar()
+    for week in weeks:
+        if not isinstance(week, dict):
+            continue
+        try:
+            week_nr = int(week.get("nr"))
+            week_year = int(week.get("year"))
+        except (TypeError, ValueError):
+            continue
+        if week_nr != iso_week or week_year != iso_year:
+            continue
+
+        types = week.get("types")
+        if not isinstance(types, list):
+            return None
+        return {
+            str(week_type).strip()
+            for week_type in types
+            if str(week_type).strip()
+        }
+
+    return None
+
+
+def _lesson_applies_to_day(item: dict[str, Any], data: dict[str, Any], day: date) -> bool:
+    """Return whether a recurring lesson applies to the timetable week of a date."""
+    lesson_weeks = item.get("weeks")
+    if not isinstance(lesson_weeks, list) or not lesson_weeks:
+        return True
+
+    week_types = _timetable_week_types(data, day)
+    if week_types is None:
+        return True
+
+    return bool(
+        {
+            str(week_type).strip()
+            for week_type in lesson_weeks
+            if str(week_type).strip()
+        }
+        & week_types
+    )
+
+
 def _is_timetable_school_day(data: dict[str, Any], day: date) -> bool:
     """Return whether timetable events should be generated for a date."""
     valid_from, valid_to = _timetable_valid_range(data)
@@ -749,6 +800,9 @@ def _lesson_events(
                 current_day += timedelta(days=7)
 
         for current_day in lesson_dates:
+            if lesson_date is None and not _lesson_applies_to_day(item, data, current_day):
+                continue
+
             is_school_day = school_day_cache.get(current_day)
             if is_school_day is None:
                 is_school_day = _is_timetable_school_day(data, current_day)
