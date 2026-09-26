@@ -14,7 +14,7 @@ CONF_ENABLE_NOTICE_CALENDAR = "enable_notice_calendar"
 CONF_ENABLE_HOMEWORK_TODO = "enable_homework_todo"
 DEFAULT_NAME = "beste.schule"
 
-PLATFORMS = ["sensor", "calendar", "binary_sensor", "todo"]
+PLATFORMS = ["sensor", "calendar", "binary_sensor", "todo", "number"]
 
 DEFAULT_OPTIONS = {
     CONF_ENABLE_TIMETABLE_CALENDAR: True,

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.5-beta.1 - 2026-09-27
+
+### Added
+
+- Add week navigation support for recent `stundenplan-card` releases.
+- Add a timetable week-offset number entity for the current and following two weeks.
+- Expose `rows_table`, date metadata and `week_offset_entity` on the timetable-card sensor.
+
+### Compatibility
+
+- Keep existing `plan` / `Stunde` dashboard configurations unchanged.
+- Keep the existing automatic switch to the upcoming week on weekends for the legacy `plan` attribute.
+
 ## 1.0.3 - 2026-08-21
 
 ### Fixed

@@ -12,6 +12,7 @@ from custom_components.beste_schule import sensor
 from custom_components.beste_schule.sensor import (
     _evaluate_formula,
     _grade_year_history,
+    _timetable_card_meta_days,
     _timetable_card_rows,
 )
 
@@ -32,7 +33,7 @@ def test_empty_timetable_card_result_is_cached(monkeypatch) -> None:
     now = datetime(2026, 7, 19, 12, tzinfo=ZoneInfo("Europe/Berlin"))
     coordinator = SimpleNamespace(
         data_revision=3,
-        timetable_card_cache={(3, now.date(), 0): []},
+        timetable_card_cache={(3, now.date(), 1): []},
     )
     generate = Mock(side_effect=AssertionError("cache miss"))
     monkeypatch.setattr(sensor.dt_util, "now", lambda: now)
@@ -103,3 +104,69 @@ def test_timetable_card_fallback_groups_matching_times(monkeypatch) -> None:
     assert len(rows) == 1
     assert rows[0]["Mo"] == "Musik"
     assert rows[0]["Di"] == "Deutsch"
+
+
+def test_timetable_card_explicit_offset_keeps_current_week_on_weekend(
+    monkeypatch,
+) -> None:
+    """Explicit card navigation must use literal week offsets on weekends."""
+    now = datetime(2026, 9, 27, 12, tzinfo=ZoneInfo("Europe/Berlin"))
+    monkeypatch.setattr(sensor.dt_util, "now", lambda: now)
+
+    assert _timetable_card_meta_days(0) == [
+        "20260928",
+        "20260929",
+        "20260930",
+        "20261001",
+        "20261002",
+    ]
+    assert _timetable_card_meta_days(
+        0,
+        auto_advance_weekend=False,
+    ) == [
+        "20260921",
+        "20260922",
+        "20260923",
+        "20260924",
+        "20260925",
+    ]
+    assert _timetable_card_meta_days(
+        1,
+        auto_advance_weekend=False,
+    ) == [
+        "20260928",
+        "20260929",
+        "20260930",
+        "20261001",
+        "20261002",
+    ]
+
+
+def test_timetable_card_rows_include_modern_time_key(monkeypatch) -> None:
+    """Rows should support both legacy Stunde and modern time keys."""
+    now = datetime(2026, 9, 21, 7, tzinfo=ZoneInfo("Europe/Berlin"))
+    event = CalendarEvent(
+        summary="Mathematik",
+        start=now.replace(hour=8, minute=0),
+        end=now.replace(hour=8, minute=45),
+    )
+    coordinator = SimpleNamespace(
+        data={},
+        data_revision=1,
+        timetable_card_cache={},
+    )
+    monkeypatch.setattr(sensor.dt_util, "now", lambda: now)
+    monkeypatch.setattr(
+        sensor,
+        "_coordinator_lesson_events",
+        lambda *args, **kwargs: [event],
+    )
+
+    rows = _timetable_card_rows(
+        coordinator,
+        0,
+        auto_advance_weekend=False,
+    )
+
+    assert rows[0]["Stunde"] == "08:00-08:45"
+    assert rows[0]["time"] == "08:00-08:45"

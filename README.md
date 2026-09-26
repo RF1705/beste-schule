@@ -87,6 +87,7 @@ The integration currently creates:
 - `sensor`: class
 - `sensor`: school year
 - `sensor`: timetable card data
+- `number`: timetable week offset for compatible dashboard cards
 - `sensor`: grade average per subject
 
 ### stundenplan-card compatibility
@@ -103,9 +104,19 @@ source_attribute: plan
 source_time_key: Stunde
 ```
 
-The sensor exposes a single `plan` attribute. It shows the current
+The legacy `plan` attribute keeps the existing behavior: it shows the current
 Monday-Friday week on weekdays and switches to the upcoming week on Saturday
 and Sunday. Cancelled lessons are included as `Ausfall: <subject>` cells.
+
+Recent `stundenplan-card` releases can also navigate between weeks. For that
+mode, use the card's integration/entity source in the visual editor and select
+the same `Timetable card` sensor. The sensor additionally exposes
+`rows_table`, date metadata and the matching `week_offset_entity`. The
+generated `Timetable week offset` number supports the current week plus the
+next two weeks; the card's arrow buttons update it automatically.
+
+Existing dashboards that use `source_type: sensor`, `plan` and `Stunde`
+continue to work unchanged.
 
 Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
 

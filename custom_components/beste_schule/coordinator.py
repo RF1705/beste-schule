@@ -47,6 +47,7 @@ class BesteSchuleDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             bool, tuple[tuple[int, Any], list[Any]]
         ] = {}
         self.timetable_card_cache: dict[tuple[int, Any, int], list[dict[str, Any]]] = {}
+        self.timetable_card_week_offset: int | None = None
         self.timetable_history_generation = 0
         self.timetable_history_saved_generation = 0
         self.lesson_boundary_manager: Any | None = None

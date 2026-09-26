@@ -11,6 +11,7 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -27,6 +28,7 @@ from .calendar import (
     _parse_date,
     _period_time_map,
 )
+from .const import DOMAIN
 from .coordinator import BesteSchuleDataUpdateCoordinator, coordinators_for_entry
 from .entity import besteschule_device_info, student_data_from_data
 from .presence import lesson_boundary_manager
@@ -668,24 +670,45 @@ def _event_cell_style(event: Any) -> dict[str, Any] | None:
     return None
 
 
-def _timetable_card_display_offset(week_offset: int, weekday: int) -> int:
-    """Switch the current-week view to the upcoming week on weekends."""
-    if week_offset == 0 and weekday >= 5:
+def _timetable_card_display_offset(
+    week_offset: int,
+    weekday: int,
+    *,
+    auto_advance_weekend: bool = True,
+) -> int:
+    """Return the displayed week offset for the timetable card."""
+    if auto_advance_weekend and week_offset == 0 and weekday >= 5:
         return 1
     return week_offset
+
+
+def _timetable_card_selected_offset(
+    coordinator: BesteSchuleDataUpdateCoordinator,
+) -> int:
+    """Return the week selected through the timetable card navigation."""
+    selected = coordinator.timetable_card_week_offset
+    if selected is not None:
+        return selected
+    return _timetable_card_display_offset(0, dt_util.now().weekday())
 
 
 def _timetable_card_rows(
     coordinator: BesteSchuleDataUpdateCoordinator,
     week_offset: int,
+    *,
+    auto_advance_weekend: bool = True,
 ) -> list[dict[str, Any]]:
     """Return week rows compatible with fabel-smith/stundenplan-card."""
     now = dt_util.now()
-    cache_key = (coordinator.data_revision, now.date(), week_offset)
+    display_offset = _timetable_card_display_offset(
+        week_offset,
+        now.weekday(),
+        auto_advance_weekend=auto_advance_weekend,
+    )
+    cache_key = (coordinator.data_revision, now.date(), display_offset)
     cached = coordinator.timetable_card_cache.get(cache_key)
     if cached is not None:
         return cached
-    display_offset = _timetable_card_display_offset(week_offset, now.weekday())
     week_start = (
         now - timedelta(days=now.weekday()) + timedelta(weeks=display_offset)
     ).replace(
@@ -748,6 +771,7 @@ def _timetable_card_rows(
             {
                 "ID": number,
                 "Stunde": f"{row_start}-{row_end}",
+                "time": f"{row_start}-{row_end}",
                 "start": row_start,
                 "end": row_end,
                 "Mo": "",
@@ -788,10 +812,18 @@ def _timetable_card_days() -> list[str]:
     return ["Mo", "Di", "Mi", "Do", "Fr"]
 
 
-def _timetable_card_meta_days(week_offset: int) -> list[str]:
+def _timetable_card_meta_days(
+    week_offset: int,
+    *,
+    auto_advance_weekend: bool = True,
+) -> list[str]:
     """Return week dates for stundenplan-card headers."""
     now = dt_util.now()
-    display_offset = _timetable_card_display_offset(week_offset, now.weekday())
+    display_offset = _timetable_card_display_offset(
+        week_offset,
+        now.weekday(),
+        auto_advance_weekend=auto_advance_weekend,
+    )
     week_start = (
         now.date() - timedelta(days=now.weekday()) + timedelta(weeks=display_offset)
     )
@@ -906,11 +938,41 @@ class BesteSchuleTimetableCardSensor(
         """Return the number of timetable rows."""
         return len(_timetable_card_rows(self.coordinator, 0))
 
+    def _week_offset_entity_id(self) -> str | None:
+        """Return the registered number entity used by stundenplan-card."""
+        if self.hass is None:
+            return None
+        entity_registry = er.async_get(self.hass)
+        return entity_registry.async_get_entity_id(
+            "number",
+            DOMAIN,
+            f"{self.coordinator.unique_id_prefix(self._entry.entry_id)}"
+            "_timetable_week_offset",
+        )
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return rows in formats consumed by stundenplan-card."""
-        rows = _timetable_card_rows(self.coordinator, 0)
-        return {"plan": rows}
+        legacy_rows = _timetable_card_rows(self.coordinator, 0)
+        week_offset = _timetable_card_selected_offset(self.coordinator)
+        rows_table = _timetable_card_rows(
+            self.coordinator,
+            week_offset,
+            auto_advance_weekend=False,
+        )
+        attributes: dict[str, Any] = {
+            "plan": legacy_rows,
+            "rows_table": rows_table,
+            "meta": {
+                "days": _timetable_card_meta_days(
+                    week_offset,
+                    auto_advance_weekend=False,
+                )
+            },
+        }
+        if week_offset_entity := self._week_offset_entity_id():
+            attributes["week_offset_entity"] = week_offset_entity
+        return attributes
 
 
 class BesteSchuleSickDaysSensor(
