@@ -118,6 +118,11 @@
       "school_time": {
         "name": "Schulzeit"
       }
+    },
+    "number": {
+      "timetable_week_offset": {
+        "name": "Stundenplan-Wochenversatz"
+      }
     }
   }
 }
