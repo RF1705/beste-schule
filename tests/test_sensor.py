@@ -33,7 +33,7 @@ def test_empty_timetable_card_result_is_cached(monkeypatch) -> None:
     now = datetime(2026, 7, 19, 12, tzinfo=ZoneInfo("Europe/Berlin"))
     coordinator = SimpleNamespace(
         data_revision=3,
-        timetable_card_cache={(3, now.date(), 0): []},
+        timetable_card_cache={(3, now.date(), 1): []},
     )
     generate = Mock(side_effect=AssertionError("cache miss"))
     monkeypatch.setattr(sensor.dt_util, "now", lambda: now)
