@@ -591,16 +591,16 @@ def _timetable_week_types(data: dict[str, Any], day: date) -> set[str] | None:
         types = week.get("types")
         if not isinstance(types, list):
             return None
-        return {
-            str(week_type).strip()
-            for week_type in types
-            if str(week_type).strip()
-        }
+        return {str(week_type).strip() for week_type in types if str(week_type).strip()}
 
     return None
 
 
-def _lesson_applies_to_day(item: dict[str, Any], data: dict[str, Any], day: date) -> bool:
+def _lesson_applies_to_day(
+    item: dict[str, Any],
+    data: dict[str, Any],
+    day: date,
+) -> bool:
     """Return whether a recurring lesson applies to the timetable week of a date."""
     lesson_weeks = item.get("weeks")
     if not isinstance(lesson_weeks, list) or not lesson_weeks:
@@ -611,11 +611,7 @@ def _lesson_applies_to_day(item: dict[str, Any], data: dict[str, Any], day: date
         return True
 
     return bool(
-        {
-            str(week_type).strip()
-            for week_type in lesson_weeks
-            if str(week_type).strip()
-        }
+        {str(week_type).strip() for week_type in lesson_weeks if str(week_type).strip()}
         & week_types
     )
 
@@ -800,7 +796,9 @@ def _lesson_events(
                 current_day += timedelta(days=7)
 
         for current_day in lesson_dates:
-            if lesson_date is None and not _lesson_applies_to_day(item, data, current_day):
+            if lesson_date is None and not _lesson_applies_to_day(
+                item, data, current_day
+            ):
                 continue
 
             is_school_day = school_day_cache.get(current_day)

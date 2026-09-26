@@ -32,4 +32,5 @@ jobs:
       - name: Check Python quality
         run: |
           ruff check custom_components tests
+          ruff format --diff custom_components tests
           ruff format --check custom_components tests
