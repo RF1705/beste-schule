@@ -58,8 +58,7 @@ class BesteSchuleTimetableWeekOffsetNumber(
         super().__init__(coordinator)
         self._entry = entry
         self._attr_unique_id = (
-            f"{coordinator.unique_id_prefix(entry.entry_id)}"
-            "_timetable_week_offset"
+            f"{coordinator.unique_id_prefix(entry.entry_id)}_timetable_week_offset"
         )
 
     @property
