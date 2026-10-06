@@ -1,4 +1,4 @@
-# beste.schule for Home Assistant
+# beste.schule für Home Assistant
 
 [![HACS](https://github.com/RF1705/beste-schule/actions/workflows/hacs.yml/badge.svg)](https://github.com/RF1705/beste-schule/actions/workflows/hacs.yml)
 [![Hassfest](https://github.com/RF1705/beste-schule/actions/workflows/hassfest.yml/badge.svg)](https://github.com/RF1705/beste-schule/actions/workflows/hassfest.yml)
@@ -7,94 +7,119 @@
 [![License](https://img.shields.io/github/license/RF1705/beste-schule)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-rf1705-yellow?logo=buymeacoffee)](https://buymeacoffee.com/rf1705)
 
-Home Assistant integration for beste.schule timetables, absences, homework, exams, school notices, school time and grade averages.
+Home-Assistant-Integration für Stundenpläne, Fehlzeiten, Hausaufgaben, Klassenarbeiten, Schulhinweise, Schulzeit und Notendurchschnitte aus beste.schule.
 
-This custom integration connects Home Assistant to [beste.schule](https://beste.schule/) with a Personal Access Token. It creates calendar entries for lessons, absences, homework, exams and school-wide notices, exposes the current school-time state and adds grade average sensors per subject.
+Diese Custom Integration verbindet Home Assistant über einen Personal Access Token mit [beste.schule](https://beste.schule/). Sie erstellt Kalender für Unterricht, Fehlzeiten, Hausaufgaben, Klassenarbeiten und schulweite Hinweise, stellt den aktuellen Schulzeit-Status bereit und legt Notendurchschnitt-Sensoren für die einzelnen Fächer an.
 
-## Features
+## Funktionen
 
-- Timetable calendar with lessons from beste.schule
-- Timetable history keeps past lessons from the setup day onward
-- Absence calendar with all-day absence events
-- Homework calendar from visible journal notes
-- Exams calendar from visible journal notes
-- School notices calendar for day-wide substitution notes
-- Homework to-do list from visible journal notes
-- School time binary sensor
-- Current lesson and next lesson sensors
-- Sick-days sensor
-- Current school-year sensor
-- Grade average sensors per subject
-- Grade averages use beste.schule calculation rules and collection weights when available
-- Class sensor
-- Timetable JSON sensor for `fabel-smith/stundenplan-card`
-- Options to enable or disable calendars and the homework to-do list
-- Translations for English, German, Turkish, Polish and other common Home Assistant languages
-- Support for multiple children in one beste.schule account
+- Stundenplan-Kalender mit Unterricht aus beste.schule
+- Stundenplan-Historie mit vergangenen Unterrichtsstunden ab dem Tag der Einrichtung
+- Fehlzeiten-Kalender mit ganztägigen Abwesenheitseinträgen
+- Hausaufgaben-Kalender aus sichtbaren Klassenbuch-Einträgen
+- Klassenarbeiten-Kalender aus sichtbaren Klassenbuch-Einträgen
+- Schulhinweise-Kalender für ganztägige Vertretungshinweise
+- Hausaufgaben-To-do-Liste aus sichtbaren Klassenbuch-Einträgen
+- Binary Sensor für die Schulzeit
+- Sensoren für die aktuelle und die nächste Unterrichtsstunde
+- Sensor für Krankheitstage
+- Sensor für das aktuelle Schuljahr
+- Notendurchschnitt-Sensoren pro Fach
+- Notendurchschnitte verwenden die Berechnungsregeln und Gewichtungen aus beste.schule, sofern verfügbar
+- Sensor für die Klasse
+- Stundenplan-JSON-Sensor für `fabel-smith/stundenplan-card`
+- Optionen zum Aktivieren oder Deaktivieren der Kalender und der Hausaufgaben-To-do-Liste
+- Übersetzungen für Deutsch, Englisch, Türkisch, Polnisch und weitere gängige Home-Assistant-Sprachen
+- Unterstützung für mehrere Kinder innerhalb eines beste.schule-Kontos
 
-## Installation with HACS
+## Installation mit HACS
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=RF1705&repository=beste-schule&category=integration)
 
-1. Open the HACS repository link above.
-2. Confirm that the repository is added as an integration.
-3. Install `beste.schule` from HACS.
-4. Restart Home Assistant.
-5. Go to **Settings** -> **Devices & services** -> **Add integration**.
-6. Search for `beste.schule`.
-7. Paste your beste.schule Personal Access Token.
+1. Öffne den HACS-Link oben.
+2. Bestätige, dass das Repository als Integration hinzugefügt wird.
+3. Installiere `beste.schule` über HACS.
+4. Starte Home Assistant neu.
+5. Öffne **Einstellungen** -> **Geräte & Dienste** -> **Integration hinzufügen**.
+6. Suche nach `beste.schule`.
+7. Füge deinen beste.schule Personal Access Token ein.
 
-## Manual HACS repository setup
+## Manuelle Einrichtung des HACS-Repositories
 
-If the button does not work:
+Falls der Button nicht funktioniert:
 
-1. Open Home Assistant.
-2. Go to **HACS** -> **Integrations**.
-3. Open the three-dot menu and choose **Custom repositories**.
-4. Add this repository URL:
+1. Öffne Home Assistant.
+2. Gehe zu **HACS** -> **Integrationen**.
+3. Öffne das Drei-Punkte-Menü und wähle **Benutzerdefinierte Repositories**.
+4. Füge dieses Repository hinzu:
 
    ```text
    https://github.com/RF1705/beste-schule
    ```
 
-5. Select **Integration** as the category.
-6. Install `beste.schule`, restart Home Assistant and add the integration from **Devices & services**.
+5. Wähle **Integration** als Kategorie.
+6. Installiere `beste.schule`, starte Home Assistant neu und füge die Integration anschließend unter **Geräte & Dienste** hinzu.
 
 ## Personal Access Token
 
-Create a token in your beste.schule user account:
+Erstelle einen Token in deinem beste.schule-Benutzerkonto:
 
-1. Sign in to beste.schule.
-2. Open your user account from your name in the top right corner.
-3. Select **API** in the left menu.
-4. Create a new token under **Personal Access Token**.
-5. Copy the token and paste it into the Home Assistant setup dialog.
+1. Melde dich bei beste.schule an.
+2. Öffne oben rechts über deinen Namen dein Benutzerkonto.
+3. Wähle links **API**.
+4. Erstelle unter **Personal Access Token** einen neuen Token.
+5. Kopiere den Token und füge ihn beim Einrichten der Home-Assistant-Integration ein.
 
-## Entities
+## Entitäten
 
-The integration currently creates:
+Die Integration erstellt derzeit:
 
-- `calendar`: timetable
-- `calendar`: absences
-- `calendar`: homework
-- `calendar`: exams
-- `calendar`: notices
-- `todo`: homework
-- `binary_sensor`: school time
-- `sensor`: current lesson
-- `sensor`: next lesson
-- `sensor`: sick days
-- `sensor`: class
-- `sensor`: school year
-- `sensor`: timetable card data
-- `number`: timetable week offset for compatible dashboard cards
-- `sensor`: grade average per subject
+- `calendar`: Stundenplan
+- `calendar`: Fehlzeiten
+- `calendar`: Hausaufgaben
+- `calendar`: Klassenarbeiten
+- `calendar`: Hinweise
+- `todo`: Hausaufgaben
+- `binary_sensor`: Schulzeit
+- `sensor`: aktuelle Unterrichtsstunde
+- `sensor`: nächste Unterrichtsstunde
+- `sensor`: Krankheitstage
+- `sensor`: Klasse
+- `sensor`: Schuljahr
+- `sensor`: Stundenplan-Kartendaten
+- `number`: Wochenoffset für kompatible Stundenplan-Karten
+- `sensor`: Notendurchschnitt pro Fach
 
-### stundenplan-card compatibility
+### Beispiel: Notenübersicht im Dashboard
 
-The `0.4` releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through JSON source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
+Die Notendurchschnitt-Sensoren lassen sich mit
+[Mushroom Cards](https://github.com/piitaya/lovelace-mushroom) als kompakte Übersicht im Dashboard darstellen.
 
-Use the `Timetable card` sensor from this integration in the card:
+Das folgende Beispiel zeigt für jedes Fach den aktuellen Durchschnitt und – sofern vorhanden – den Durchschnitt des vorherigen Schuljahres. Gab es ein Fach im vorherigen Schuljahr noch nicht, wird der Vorjahreswert automatisch weggelassen. Fächer ohne aktuelle Note werden als `Noch keine Note` angezeigt.
+
+![Beispiel für eine Notenübersicht](docs/images/grade-dashboard.png)
+
+
+Für die Farben wird folgendes Schema verwendet:
+
+- bis `2.5`: grün
+- bis `3.5`: hellgrün
+- unter `5.0`: orange
+- ab `5.0`: rot
+- keine aktuelle Note: grau
+
+Die vollständige Dashboard-Konfiguration findest du unter
+[`examples/grade-dashboard.yaml`](examples/grade-dashboard.yaml).
+
+Das Beispiel-YAML verwendet `sensor.test_note_*` als Entity-IDs, da der Screenshot mit Test-Sensoren erstellt wurde. Ersetze diese IDs durch die von der Integration erzeugten Noten-Sensoren deines Kindes, zum Beispiel `sensor.<child>_note_ethik`.
+
+Das vorherige Schuljahr wird aus dem entsprechenden Sensor-Attribut gelesen. Das Template prüft vor der Ausgabe, ob dieses Attribut vorhanden ist. Fächer, die erst im aktuellen Schuljahr hinzugekommen sind, benötigen deshalb keine Sonderbehandlung.
+
+### Kompatibilität mit stundenplan-card
+
+Die `0.4`-Versionen sind über die JSON-Quelle mit [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) kompatibel. Damit lässt sich der beste.schule-Stundenplan als kompakte Tabelle in einem Home-Assistant-Dashboard darstellen.
+
+Verwende in der Karte den Sensor `Timetable card` aus dieser Integration:
 
 ```yaml
 type: custom:stundenplan-card
@@ -104,36 +129,28 @@ source_attribute: plan
 source_time_key: Stunde
 ```
 
-The legacy `plan` attribute keeps the existing behavior: it shows the current
-Monday-Friday week on weekdays and switches to the upcoming week on Saturday
-and Sunday. Cancelled lessons are included as `Ausfall: <subject>` cells.
+Das bisherige `plan`-Attribut behält sein Verhalten bei: An Wochentagen zeigt es die aktuelle Woche von Montag bis Freitag, am Samstag und Sonntag wechselt es auf die kommende Woche. Ausgefallene Stunden werden als `Ausfall: <subject>` dargestellt.
 
-Recent `stundenplan-card` releases can also navigate between weeks. For that
-mode, use the card's integration/entity source in the visual editor and select
-the same `Timetable card` sensor. The sensor additionally exposes
-`rows_table`, date metadata and the matching `week_offset_entity`. The
-generated `Timetable week offset` number supports the current week plus the
-next two weeks; the card's arrow buttons update it automatically.
+Aktuelle Versionen der `stundenplan-card` können zusätzlich zwischen Wochen navigieren. Verwende dafür im visuellen Editor die Integrations-/Entitätsquelle der Karte und wähle denselben `Timetable card`-Sensor aus. Der Sensor stellt zusätzlich `rows_table`, Datumsinformationen und die passende `week_offset_entity` bereit. Die erzeugte `Timetable week offset`-Entität unterstützt die aktuelle sowie die nächsten zwei Wochen; die Pfeiltasten der Karte aktualisieren den Wert automatisch.
 
-Existing dashboards that use `source_type: sensor`, `plan` and `Stunde`
-continue to work unchanged.
+Bestehende Dashboards, die `source_type: sensor`, `plan` und `Stunde` verwenden, funktionieren unverändert weiter.
 
-Old test entities from early versions may remain in Home Assistant's entity registry after an update. They can be removed from **Settings** -> **Devices & services** -> **Entities** when they are no longer provided by the integration.
+Alte Test-Entitäten aus frühen Versionen können nach einem Update in der Entity Registry von Home Assistant verbleiben. Wenn sie von der Integration nicht mehr bereitgestellt werden, können sie unter **Einstellungen** -> **Geräte & Dienste** -> **Entitäten** entfernt werden.
 
-### Multiple children
+### Mehrere Kinder
 
-Starting with `0.6`, one beste.schule token can create separate Home Assistant devices for multiple children from the same account. Each child gets its own calendars, sensors and homework to-do list.
+Ab Version `0.6` kann ein beste.schule-Token getrennte Home-Assistant-Geräte für mehrere Kinder desselben Kontos erstellen. Jedes Kind erhält eigene Kalender, Sensoren und eine eigene Hausaufgaben-To-do-Liste.
 
 ## Roadmap
 
-- More robust substitution details as the API shapes become clearer
+- Robustere Verarbeitung von Vertretungsdetails, sobald die API-Strukturen eindeutiger sind
 
 ## Support
 
-This project is community-maintained and not affiliated with beste.schule.
+Dieses Projekt wird von der Community gepflegt und steht in keiner Verbindung zu beste.schule.
 
-If the integration helps you, you can support development here: [buymeacoffee.com/rf1705](https://buymeacoffee.com/rf1705).
+Wenn dir die Integration hilft, kannst du die Entwicklung hier unterstützen: [buymeacoffee.com/rf1705](https://buymeacoffee.com/rf1705).
 
-## License
+## Lizenz
 
 MIT

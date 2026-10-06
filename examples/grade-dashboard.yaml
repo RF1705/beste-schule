@@ -1,0 +1,355 @@
+type: grid
+columns: 3
+square: false
+cards:
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_biologie
+    primary: Biologie
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:leaf
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_deutsch
+    primary: Deutsch
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:book-open-variant
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_englisch
+    primary: Englisch
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:translate
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_ethik
+    primary: Ethik
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:scale-balance
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_geographie
+    primary: Geographie
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:earth
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_geschichte
+    primary: Geschichte
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:castle
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_kunst
+    primary: Kunst
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:palette
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_mathematik
+    primary: Mathematik
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:calculator
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_musik
+    primary: Musik
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:music
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_physik
+    primary: Physik
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:atom
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_sport
+    primary: Sport
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:run
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+  - type: custom:mushroom-template-card
+    entity: sensor.test_note_technik_computer
+    primary: Technik / Computer
+    secondary: >
+      {% set current = states(entity) %} {% set previous = state_attr(entity,
+      '2025/26') %} {% if current not in ['unknown', 'unavailable', 'Unbekannt',
+      ''] %}
+        Ø {{ current }}
+        {% if previous is not none and previous|string not in ['unknown', 'unavailable', 'Unbekannt', ''] %}
+          · Vorjahr {{ previous|string|replace('.', ',') }}
+        {% endif %}
+      {% else %}
+        Noch keine Note
+      {% endif %}
+    icon: mdi:desktop-classic
+    icon_color: >
+      {% set s = states(entity) %} {% if s in ['unknown', 'unavailable',
+      'Unbekannt', ''] %}
+        grey
+      {% else %}
+        {% set n = s|replace(',', '.')|float(0) %}
+        {% if n <= 2.5 %}green
+        {% elif n <= 3.5 %}light-green
+        {% elif n < 5 %}orange
+        {% else %}red
+        {% endif %}
+      {% endif %}
+    tap_action:
+      action: more-info
+grid_options:
+  columns: 21
+  rows: auto
