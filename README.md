@@ -100,6 +100,8 @@ available, the previous school year's average. If a subject did not exist in
 the previous school year, the previous-year value is omitted automatically.
 Subjects without a current grade are shown as `Noch keine Note`.
 
+![Grade dashboard example](docs/images/grade-dashboard.png)
+
 
 The example uses the following color scheme:
 
