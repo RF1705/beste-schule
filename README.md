@@ -90,6 +90,37 @@ The integration currently creates:
 - `number`: timetable week offset for compatible dashboard cards
 - `sensor`: grade average per subject
 
+### Grade dashboard example
+
+The grade average sensors can be displayed as a compact dashboard using
+[Mushroom cards](https://github.com/piitaya/lovelace-mushroom).
+
+The example below shows the current average for each subject and, when
+available, the previous school year's average. If a subject did not exist in
+the previous school year, the previous-year value is omitted automatically.
+Subjects without a current grade are shown as `Noch keine Note`.
+
+![Grade dashboard example](docs/images/grade-dashboard.png)
+
+The example uses the following color scheme:
+
+- up to `2.5`: green
+- up to `3.5`: light green
+- below `5.0`: orange
+- `5.0` and worse: red
+- no current grade: grey
+
+The complete dashboard configuration is available in
+[`examples/grade-dashboard.yaml`](examples/grade-dashboard.yaml).
+
+The example YAML uses `sensor.test_note_*` entity IDs because the screenshot
+was created with test sensors. Replace those IDs with the grade sensor entity
+IDs created for your child, for example `sensor.<child>_note_ethik`.
+
+The previous school year is read from the corresponding sensor attribute. The
+template checks whether that attribute exists before displaying it, so subjects
+introduced in the current school year work without any special handling.
+
 ### stundenplan-card compatibility
 
 The `0.4` releases are compatible with [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) through JSON source. This is a nice way to show the beste.schule timetable as a compact visual table in a Home Assistant dashboard.
