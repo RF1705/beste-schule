@@ -119,21 +119,22 @@ Das vorherige Schuljahr wird aus dem entsprechenden Sensor-Attribut gelesen. Das
 
 Die `0.4`-Versionen sind über die JSON-Quelle mit [`fabel-smith/stundenplan-card`](https://github.com/fabel-smith/stundenplan-card) kompatibel. Damit lässt sich der beste.schule-Stundenplan als kompakte Tabelle in einem Home-Assistant-Dashboard darstellen.
 
-Verwende in der Karte den Sensor `Timetable card` aus dieser Integration:
+Für aktuelle Versionen der `stundenplan-card` sollte der Sensor über `rows_table` eingebunden werden. Nur dieses Attribut folgt dem ausgewählten Wochenversatz und liefert dadurch beim Blättern die Daten der gewählten Woche:
 
 ```yaml
 type: custom:stundenplan-card
 source_type: sensor
 source_entity: sensor.<child>_stundenplan_card
-source_attribute: plan
-source_time_key: Stunde
+source_attribute: rows_table
+source_time_key: time
+week_offset_entity: number.<child>_stundenplan_wochenversatz
 ```
 
-Das bisherige `plan`-Attribut behält sein Verhalten bei: An Wochentagen zeigt es die aktuelle Woche von Montag bis Freitag, am Samstag und Sonntag wechselt es auf die kommende Woche. Ausgefallene Stunden werden als `Ausfall: <subject>` dargestellt.
+Am einfachsten ist die Einrichtung über den visuellen Editor der Karte. Wähle dort den `Timetable card`-Sensor der Integration. Der Sensor stellt `rows_table`, Datumsinformationen und die passende `week_offset_entity` bereit. Die erzeugte `Timetable week offset`-Entität unterstützt die aktuelle sowie die nächsten zwei Wochen; die Pfeiltasten der Karte aktualisieren den Wert automatisch.
 
-Aktuelle Versionen der `stundenplan-card` können zusätzlich zwischen Wochen navigieren. Verwende dafür im visuellen Editor die Integrations-/Entitätsquelle der Karte und wähle denselben `Timetable card`-Sensor aus. Der Sensor stellt zusätzlich `rows_table`, Datumsinformationen und die passende `week_offset_entity` bereit. Die erzeugte `Timetable week offset`-Entität unterstützt die aktuelle sowie die nächsten zwei Wochen; die Pfeiltasten der Karte aktualisieren den Wert automatisch.
+Das Attribut `plan` bleibt aus Kompatibilitätsgründen erhalten. Es ist eine Legacy-Ansicht für bestehende Dashboards und zeigt unabhängig vom eingestellten Wochenversatz die aktuelle Woche beziehungsweise am Wochenende die kommende Woche. Für die Wochen-Navigation darf daher nicht `source_attribute: plan`, sondern muss `source_attribute: rows_table` verwendet werden.
 
-Bestehende Dashboards, die `source_type: sensor`, `plan` und `Stunde` verwenden, funktionieren unverändert weiter.
+Bestehende Dashboards ohne Wochen-Navigation, die `source_type: sensor`, `plan` und `Stunde` verwenden, funktionieren unverändert weiter.
 
 Alte Test-Entitäten aus frühen Versionen können nach einem Update in der Entity Registry von Home Assistant verbleiben. Wenn sie von der Integration nicht mehr bereitgestellt werden, können sie unter **Einstellungen** -> **Geräte & Dienste** -> **Entitäten** entfernt werden.
 
