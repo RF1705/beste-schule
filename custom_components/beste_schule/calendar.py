@@ -1641,9 +1641,9 @@ def _is_exam_note(note: dict[str, Any]) -> bool:
     if _is_homework_note(note):
         return False
     note_type = (_note_type_name(note) or "").strip().lower()
-    if note_type in ("ka", "lk"):
+    if note_type in ("ka", "lk", "wü", "tü", "wue", "tue"):
         return True
-    description = (_extract_text(note.get("description")) or "").lower()
+    description = (_extract_text(note.get("description")) or "").casefold()
     text = f"{note_type} {description}"
     markers = (
         "klassenarbeit",
@@ -1655,8 +1655,14 @@ def _is_exam_note(note: dict[str, Any]) -> bool:
         "arbeit",
         "exam",
         "classwork",
+        "wissensüberprüfung",
+        "wissensueberpruefung",
+        "tägliche übung",
+        "taegliche uebung",
     )
-    return note_type == "lk" or any(marker in text for marker in markers)
+    abbreviations = {"wü", "tü", "wue", "tue"}
+    words = set(re.findall(r"[^\\W\\d_]+", text))
+    return bool(abbreviations & words) or any(marker in text for marker in markers)
 
 
 def _note_type_name(note: dict[str, Any]) -> str | None:
