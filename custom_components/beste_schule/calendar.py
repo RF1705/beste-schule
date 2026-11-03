@@ -1480,6 +1480,11 @@ def _note_date(item: dict[str, Any]) -> date | None:
 
 def _is_homework_note(note: dict[str, Any]) -> bool:
     """Return whether a journal note looks like homework."""
+    note_type = (_note_type_name(note) or "").strip().casefold()
+    if note_type == "ha":
+        return True
+    if note_type in ("ka", "lk"):
+        return False
     text = _all_text(
         {
             "type": note.get("type"),
@@ -1633,7 +1638,11 @@ def _exam_source_keys(data: dict[str, Any]) -> tuple[str, ...]:
 
 def _is_exam_note(note: dict[str, Any]) -> bool:
     """Return whether a journal note looks like classwork or an exam."""
-    note_type = (_note_type_name(note) or "").lower()
+    if _is_homework_note(note):
+        return False
+    note_type = (_note_type_name(note) or "").strip().lower()
+    if note_type in ("ka", "lk"):
+        return True
     description = (_extract_text(note.get("description")) or "").lower()
     text = f"{note_type} {description}"
     markers = (
