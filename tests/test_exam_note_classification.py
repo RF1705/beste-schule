@@ -12,7 +12,12 @@ def test_exam_abbreviations_are_recognized(note_type: str) -> None:
 
 @pytest.mark.parametrize(
     "description",
-    ["Wissensüberprüfung", "Wissensueberpruefung", "tägliche Übung", "taegliche Uebung"],
+    [
+        "Wissensüberprüfung",
+        "Wissensueberpruefung",
+        "tägliche Übung",
+        "taegliche Uebung",
+    ],
 )
 def test_exam_full_names_are_recognized(description: str) -> None:
     assert _is_exam_note({"type": "Sonstiges", "description": description})
