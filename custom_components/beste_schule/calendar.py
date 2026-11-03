@@ -1661,7 +1661,7 @@ def _is_exam_note(note: dict[str, Any]) -> bool:
         "taegliche uebung",
     )
     abbreviations = {"wü", "tü", "wue", "tue"}
-    words = set(re.findall(r"[^\\W\\d_]+", text))
+    words = set(re.findall(r"[^\W\d_]+", text))
     return bool(abbreviations & words) or any(marker in text for marker in markers)
 
 
